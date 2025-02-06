@@ -1,5 +1,6 @@
 #include <iostream>
 #include "lexer.h"
+#include "parser.h"
 #include <fstream>
 
 int main(int argc,char *argv[])
@@ -31,6 +32,9 @@ int main(int argc,char *argv[])
     for(Token token:tokenVector){
         std::cout<<token;
     }
+
+    Parser parser(tokenVector);
+    parser.parse();
 
     return 0;
 }

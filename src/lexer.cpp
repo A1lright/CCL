@@ -473,6 +473,8 @@ Token Lexer::readOperator()
         advance();
         return Token(operators_[first], first, startLine, startColumn);
     }
+
+    return Token(TokenType::UNKNOW,first,startLine,startColumn);
 }
 
 Token Lexer::readSymbol()

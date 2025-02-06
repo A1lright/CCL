@@ -1,38 +1,34 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "build",
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
             "type": "shell",
             "command": "g++",
-			"args": [
-				"-fdiagnostics-color=always",
-				"-g",
-				"-I${workspaceFolder}/include",  // 使用工作区变量
-				 /* 项目所需的库文件路径 */
-				"${workspaceFolder}/src/*.cpp",  // 编译所有源文件
-				"-o",
-				"${workspaceFolder}/build/c_compiler"  //	统一输出路径
-			],
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"problemMatcher": [
-				"$gcc"
-			],
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
-			"detail": "编译整个项目"
-		},
-		{
-			"label": "clean",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "-I${workspaceFolder}/include",
+                "${workspaceFolder}/src/*.cpp",
+                "-o",
+                "${workspaceFolder}/build/c_compiler"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": "build",
+            "detail": "编译整个项目"
+        },
+        {
+            "label": "clean",
             "type": "shell",
             "command": "rm",
             "args": [
                 "-rf",
-                "${workspaceFolder}/build"  // 清理构建目录
+                "${workspaceFolder}/build"
             ],
             "problemMatcher": [],
             "group": {
@@ -40,6 +36,29 @@
                 "isDefault": false
             },
             "detail": "清理构建产物"
-		}
-	]
+        },
+        {
+            "type": "cppbuild",
+            "label": "C/C++: gcc 生成活动文件",
+            "command": "/usr/bin/gcc",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "调试器生成的任务。"
+        }
+    ]
 }
