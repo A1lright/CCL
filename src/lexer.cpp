@@ -13,15 +13,15 @@ std::string Token::tokenTypeToString(TokenType tokenType)
     case TokenType::KEYWORD_AUTO:
         return "KEYWORD_AUTO";
     case TokenType::KEYWORD_BREAK:
-        return "KEYWORD_BREAK";
+        return "BREAKTK";
     case TokenType::KEYWORD_CASE:
         return "KEYWORD_CASE";
     case TokenType::KEYWORD_CHAR:
         return "KEYWORD_CHAR";
     case TokenType::KEYWORD_CONST:
-        return "KEYWORD_CONST";
+        return "CONSTTK";
     case TokenType::KEYWORD_CONTINUE:
-        return "KEYWORD_CONTINUE";
+        return "CONTINUETK";
     case TokenType::KEYWORD_DEFAULT:
         return "KEYWORD_DEFAULT";
     case TokenType::KEYWORD_DO:
@@ -29,7 +29,7 @@ std::string Token::tokenTypeToString(TokenType tokenType)
     case TokenType::KEYWORD_DOUBLE:
         return "KEYWORD_DOUBLE";
     case TokenType::KEYWORD_ELSE:
-        return "KEYWORD_ELSE";
+        return "ELSETK";
     case TokenType::KEYWORD_ENUM:
         return "KEYWORD_ENUM";
     case TokenType::KEYWORD_EXTERN:
@@ -41,15 +41,15 @@ std::string Token::tokenTypeToString(TokenType tokenType)
     case TokenType::KEYWORD_GOTO:
         return "KEYWORD_GOTO";
     case TokenType::KEYWORD_IF:
-        return "KEYWORD_IF";
+        return "IFTK";
     case TokenType::KEYWORD_INT:
-        return "KEYWORD_INT";
+        return "INTTK";
     case TokenType::KEYWORD_LONG:
         return "KEYWORD_LONG";
     case TokenType::KEYWORD_REGISTER:
         return "KEYWORD_REGISTER";
     case TokenType::KEYWORD_RETURN:
-        return "KEYWORD_RETURN";
+        return "RETURNTK";
     case TokenType::KEYWORD_SHORT:
         return "KEYWORD_SHORT";
     case TokenType::KEYWORD_SIGNED:
@@ -69,39 +69,46 @@ std::string Token::tokenTypeToString(TokenType tokenType)
     case TokenType::KEYWORD_UNSIGNED:
         return "KEYWORD_UNSIGNED";
     case TokenType::KEYWORD_VOID:
-        return "KEYWORD_VOID";
+        return "VOIDTK";
     case TokenType::KEYWORD_VOLATILE:
         return "KEYWORD_VOLATILE";
     case TokenType::KEYWORD_WHILE:
-        return "KEYWORD_WHILE";
+        return "WHILETK";
+
+    case TokenType::KEYWORD_GETINT:
+        return "GETINTTK";
+    case TokenType::KEYWORD_PRINTF:
+        return "PRINTTK";
+    case TokenType::KEYWORD_MAIN:
+        return "MAINTK";
 
     // 标识符
     case TokenType::IDENTIFIER:
-        return "IDENTIFIER";
+        return "IDENFR";
 
     // 常量
     case TokenType::CONSTANT_INTEGER:
-        return "CONSTANT_INTEGER";
+        return "INTCON";
     case TokenType::CONSTANT_FLOAT:
         return "CONSTANT_FLOAT";
     case TokenType::CONSTANT_CHAR:
         return "CONSTANT_CHAR";
     case TokenType::CONSTANT_STRING:
-        return "CONSTANT_STRING";
+        return "STRCON";
 
     // 运算符
     case TokenType::OPERATOR_ASSIGN:
-        return "OPERATOR_ASSIGN";
+        return "ASSIGN";
     case TokenType::OPERATOR_PLUS:
-        return "OPERATOR_PLUS";
+        return "PLUS";
     case TokenType::OPERATOR_MINUS:
-        return "OPERATOR_MINUS";
+        return "MINU";
     case TokenType::OPERATOR_MULTIPLY:
-        return "OPERATOR_MULTIPLY";
+        return "MULT";
     case TokenType::OPERATOR_DIVIDE:
-        return "OPERATOR_DIVIDE";
+        return "DIV";
     case TokenType::OPERATOR_MODULO:
-        return "OPERATOR_MODULO";
+        return "MOD";
     case TokenType::OPERATOR_INCREMENT:
         return "OPERATOR_INCREMENT";
     case TokenType::OPERATOR_DECREMENT:
@@ -119,11 +126,11 @@ std::string Token::tokenTypeToString(TokenType tokenType)
     case TokenType::OPERATOR_GREATER_EQUAL:
         return "OPERATOR_GREATER_EQUAL";
     case TokenType::OPERATOR_LOGICAL_AND:
-        return "OPERATOR_LOGICAL_AND";
+        return "AND";
     case TokenType::OPERATOR_LOGICAL_OR:
-        return "OPERATOR_LOGICAL_OR";
+        return "OR";
     case TokenType::OPERATOR_LOGICAL_NOT:
-        return "OPERATOR_LOGICAL_NOT";
+        return "NOT";
     case TokenType::OPERATOR_BITWISE_AND:
         return "OPERATOR_BITWISE_AND";
     case TokenType::OPERATOR_BITWISE_OR:
@@ -159,21 +166,21 @@ std::string Token::tokenTypeToString(TokenType tokenType)
 
     // 标点符号
     case TokenType::PUNCTUATION_LEFT_PAREN:
-        return "PUNCTUATION_LEFT_PAREN";
+        return "LPARENT";
     case TokenType::PUNCTUATION_RIGHT_PAREN:
-        return "PUNCTUATION_RIGHT_PAREN";
+        return "RPARENT";
     case TokenType::PUNCTUATION_LEFT_BRACE:
-        return "PUNCTUATION_LEFT_BRACE";
+        return "LBRACE";
     case TokenType::PUNCTUATION_RIGHT_BRACE:
-        return "PUNCTUATION_RIGHT_BRACE";
+        return "RBRACE";
     case TokenType::PUNCTUATION_LEFT_BRACKET:
-        return "PUNCTUATION_LEFT_BRACKET";
+        return "LBRACK";
     case TokenType::PUNCTUATION_RIGHT_BRACKET:
-        return "PUNCTUATION_RIGHT_BRACKET";
+        return "RBRACK";
     case TokenType::PUNCTUATION_COMMA:
-        return "PUNCTUATION_COMMA";
+        return "COMMA";
     case TokenType::PUNCTUATION_SEMICOLON:
-        return "PUNCTUATION_SEMICOLON";
+        return "SEMICN";
     case TokenType::PUNCTUATION_COLON:
         return "PUNCTUATION_COLON";
     case TokenType::PUNCTUATION_DOT:
@@ -237,6 +244,8 @@ Token Lexer::getNextToken()
     if (isalpha(c) || c == '_')
     {
         return readIdentifierOrKeyword();
+    }else if(c=='"'){
+        return readString();
     }
     else if (isdigit(c))
     {
@@ -435,6 +444,33 @@ Token Lexer::readNumber()
     }
 
     return Token{isFloat ? TokenType::CONSTANT_FLOAT : TokenType::CONSTANT_INTEGER, num, startLine, startColumn};
+}
+
+Token Lexer::readString()
+{
+    int startLine = currentLine_;
+    int startColumn = currentColumn_;
+    
+    std::string value;
+    value+=peek();
+    advance();
+    while (peek() != '"' && currentPosition_<=sourceCode_.length()) {
+        if (peek() == '\\') { // 处理转义
+            advance();
+            // 只允许\n转义
+            if (peek() != 'n') {
+                return Token(TokenType::ERROR, "Invalid escape sequence",startLine,startColumn);
+            }
+            advance();
+        }
+        value+=peek();
+        advance();
+    }
+    
+    if (currentPosition_>=sourceCode_.length()) return Token(TokenType::ERROR,"Unclosed string",startLine,startColumn);
+    value+=peek();
+    advance(); // 跳过闭合的"
+    return Token(TokenType::CONSTANT_STRING,value,startLine,startColumn);
 }
 
 Token Lexer::readOperator()

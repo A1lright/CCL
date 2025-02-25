@@ -1,37 +1,38 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include<string>
-#include<vector>
-#include<unordered_map>
-#include<list>
-#include<iostream>
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include <list>
+#include <iostream>
 
-//定义词法单元类型
+// 定义词法单元类型
 
-enum class TokenType{
+enum class TokenType
+{
     UNKNOW,
     // 关键字
     KEYWORD_AUTO,
-    KEYWORD_BREAK,
+    KEYWORD_BREAK, // BREAKTK
     KEYWORD_CASE,
     KEYWORD_CHAR,
-    KEYWORD_CONST,
-    KEYWORD_CONTINUE,
+    KEYWORD_CONST,    // CONSTTK
+    KEYWORD_CONTINUE, // CONTINUETK
     KEYWORD_DEFAULT,
     KEYWORD_DO,
     KEYWORD_DOUBLE,
-    KEYWORD_ELSE,
+    KEYWORD_ELSE, // ELSETK
     KEYWORD_ENUM,
     KEYWORD_EXTERN,
     KEYWORD_FLOAT,
     KEYWORD_FOR,
     KEYWORD_GOTO,
-    KEYWORD_IF,
-    KEYWORD_INT,
+    KEYWORD_IF,  // IFTK
+    KEYWORD_INT, // INTTK
     KEYWORD_LONG,
     KEYWORD_REGISTER,
-    KEYWORD_RETURN,
+    KEYWORD_RETURN, // RETURNTK
     KEYWORD_SHORT,
     KEYWORD_SIGNED,
     KEYWORD_SIZEOF,
@@ -41,70 +42,74 @@ enum class TokenType{
     KEYWORD_TYPEDEF,
     KEYWORD_UNION,
     KEYWORD_UNSIGNED,
-    KEYWORD_VOID,
+    KEYWORD_VOID, // VOIDTK
     KEYWORD_VOLATILE,
-    KEYWORD_WHILE,
+    KEYWORD_WHILE, // WHILETK
+
+    KEYWORD_GETINT, // GETINTTK
+    KEYWORD_PRINTF, //  PRINTFTK
+    KEYWORD_MAIN,   //MAINTK
 
     // 标识符
-    IDENTIFIER,
+    IDENTIFIER, // IDENFR
 
     // 常量
-    CONSTANT_INTEGER,
+    CONSTANT_INTEGER, // INTCON
     CONSTANT_FLOAT,
     CONSTANT_CHAR,
-    CONSTANT_STRING,
+    CONSTANT_STRING, // STRCON
 
     // 运算符
-    OPERATOR_ASSIGN,           // =
-    OPERATOR_PLUS,             // +
-    OPERATOR_MINUS,            // -
-    OPERATOR_MULTIPLY,         // *
-    OPERATOR_DIVIDE,           // /
-    OPERATOR_MODULO,           // %
-    OPERATOR_INCREMENT,        // ++
-    OPERATOR_DECREMENT,        // --
-    OPERATOR_EQUAL,            // ==
-    OPERATOR_NOT_EQUAL,        // !=
-    OPERATOR_LESS,             // <
-    OPERATOR_LESS_EQUAL,       // <=
-    OPERATOR_GREATER,          // >
-    OPERATOR_GREATER_EQUAL,    // >=
-    OPERATOR_LOGICAL_AND,      // &&
-    OPERATOR_LOGICAL_OR,       // ||
-    OPERATOR_LOGICAL_NOT,      // !
-    OPERATOR_BITWISE_AND,      // &
-    OPERATOR_BITWISE_OR,       // |
-    OPERATOR_BITWISE_XOR,      // ^
-    OPERATOR_BITWISE_NOT,      // ~
-    OPERATOR_LEFT_SHIFT,       // <<
-    OPERATOR_RIGHT_SHIFT,      // >>
-    OPERATOR_PLUS_ASSIGN,      // +=
-    OPERATOR_MINUS_ASSIGN,     // -=
-    OPERATOR_MULTIPLY_ASSIGN,  // *=
-    OPERATOR_DIVIDE_ASSIGN,    // /=
-    OPERATOR_MODULO_ASSIGN,    // %=
-    OPERATOR_AND_ASSIGN,       // &=
-    OPERATOR_OR_ASSIGN,        // |=
-    OPERATOR_XOR_ASSIGN,       // ^=
-    OPERATOR_LEFT_SHIFT_ASSIGN, // <<=
+    OPERATOR_ASSIGN,             // =     ASSIGN
+    OPERATOR_PLUS,               // +     PLUS
+    OPERATOR_MINUS,              // -     MINU
+    OPERATOR_MULTIPLY,           // *     MULT
+    OPERATOR_DIVIDE,             // /     DIV
+    OPERATOR_MODULO,             // %     MOD
+    OPERATOR_INCREMENT,          // ++
+    OPERATOR_DECREMENT,          // --
+    OPERATOR_EQUAL,              // ==
+    OPERATOR_NOT_EQUAL,          // !=
+    OPERATOR_LESS,               // <
+    OPERATOR_LESS_EQUAL,         // <=
+    OPERATOR_GREATER,            // >
+    OPERATOR_GREATER_EQUAL,      // >=
+    OPERATOR_LOGICAL_AND,        // &&    AND
+    OPERATOR_LOGICAL_OR,         // ||    OR
+    OPERATOR_LOGICAL_NOT,        // !     NOT
+    OPERATOR_BITWISE_AND,        // &
+    OPERATOR_BITWISE_OR,         // |
+    OPERATOR_BITWISE_XOR,        // ^
+    OPERATOR_BITWISE_NOT,        // ~
+    OPERATOR_LEFT_SHIFT,         // <<
+    OPERATOR_RIGHT_SHIFT,        // >>
+    OPERATOR_PLUS_ASSIGN,        // +=
+    OPERATOR_MINUS_ASSIGN,       // -=
+    OPERATOR_MULTIPLY_ASSIGN,    // *=
+    OPERATOR_DIVIDE_ASSIGN,      // /=
+    OPERATOR_MODULO_ASSIGN,      // %=
+    OPERATOR_AND_ASSIGN,         // &=
+    OPERATOR_OR_ASSIGN,          // |=
+    OPERATOR_XOR_ASSIGN,         // ^=
+    OPERATOR_LEFT_SHIFT_ASSIGN,  // <<=
     OPERATOR_RIGHT_SHIFT_ASSIGN, // >>=
 
     // 标点符号
-    PUNCTUATION_LEFT_PAREN,    // (
-    PUNCTUATION_RIGHT_PAREN,   // )
-    PUNCTUATION_LEFT_BRACE,    // {
-    PUNCTUATION_RIGHT_BRACE,   // }
-    PUNCTUATION_LEFT_BRACKET,  // [
-    PUNCTUATION_RIGHT_BRACKET, // ]
-    PUNCTUATION_COMMA,         // ,
-    PUNCTUATION_SEMICOLON,     // ;
+    PUNCTUATION_LEFT_PAREN,    // (     LPARENT
+    PUNCTUATION_RIGHT_PAREN,   // )     RPARENT
+    PUNCTUATION_LEFT_BRACE,    // {     LBRACE
+    PUNCTUATION_RIGHT_BRACE,   // }     RBRACE
+    PUNCTUATION_LEFT_BRACKET,  // [     LBRACK
+    PUNCTUATION_RIGHT_BRACKET, // ]     RBRACK
+    PUNCTUATION_COMMA,         // ,     COMMA
+    PUNCTUATION_SEMICOLON,     // ;     SEMICN
     PUNCTUATION_COLON,         // :
     PUNCTUATION_DOT,           // .
     PUNCTUATION_ARROW,         // ->
 
     // 注释
-    COMMENT_SINGLE_LINE,       // //
-    COMMENT_MULTI_LINE,        /* /* */
+    COMMENT_SINGLE_LINE, // //
+    COMMENT_MULTI_LINE,  /* /* */
 
     // 文件结束
     END_OF_FILE,
@@ -113,43 +118,38 @@ enum class TokenType{
     ERROR
 };
 
-
-
-
-
-class Token{
+class Token
+{
 public:
     Token();
-    Token(TokenType tokentype,std::string value,int line,int colume);
+    Token(TokenType tokentype, std::string value, int line, int colume);
     TokenType tokenType_;
     std::string value_;
     int line_;
     int colume_;
-    
-    
 
     // 将 TokenType 转换为字符串，方便调试和输出
     static std::string tokenTypeToString(TokenType type);
-    friend std::ostream& operator<<(std::ostream&os,const Token&token);
+    friend std::ostream &operator<<(std::ostream &os, const Token &token);
 };
 
-
-class Lexer{
+class Lexer
+{
 public:
     explicit Lexer(std::string sourceCode);
-    void tokenize();    //扫描文本，序列化token，调用gettoken   
-    std::vector<Token> getTokens();   
+    void tokenize(); // 扫描文本，序列化token，调用gettoken
+    std::vector<Token> getTokens();
 
 private:
-    std::string sourceCode_;    //源代码
-    size_t currentPosition_;    //当前读取位置
-    int currentLine_;           //当前行
-    int currentColumn_;         //当前列
-    
-    std::unordered_map<std::string,TokenType> keywords_={
-        {"auto",TokenType::KEYWORD_AUTO},
-        {"break",TokenType::KEYWORD_BREAK},
-        {"case",TokenType::KEYWORD_CASE},  
+    std::string sourceCode_; // 源代码
+    size_t currentPosition_; // 当前读取位置
+    int currentLine_;        // 当前行
+    int currentColumn_;      // 当前列
+
+    std::unordered_map<std::string, TokenType> keywords_ = {
+        {"auto", TokenType::KEYWORD_AUTO},
+        {"break", TokenType::KEYWORD_BREAK},
+        {"case", TokenType::KEYWORD_CASE},
         {"char", TokenType::KEYWORD_CHAR},
         {"const", TokenType::KEYWORD_CONST},
         {"continue", TokenType::KEYWORD_CONTINUE},
@@ -178,10 +178,13 @@ private:
         {"unsigned", TokenType::KEYWORD_UNSIGNED},
         {"void", TokenType::KEYWORD_VOID},
         {"volatile", TokenType::KEYWORD_VOLATILE},
-        {"while", TokenType::KEYWORD_WHILE}};
-    std::unordered_map<std::string,TokenType> operators_={
-        {"+",TokenType::OPERATOR_PLUS},
-        {"-",TokenType::OPERATOR_MINUS}, 
+        {"while", TokenType::KEYWORD_WHILE},
+        {"getint",TokenType::KEYWORD_GETINT},
+        {"printf",TokenType::KEYWORD_PRINTF},
+        {"main",TokenType::KEYWORD_MAIN}};
+    std::unordered_map<std::string, TokenType> operators_ = {
+        {"+", TokenType::OPERATOR_PLUS},
+        {"-", TokenType::OPERATOR_MINUS},
         {"*", TokenType::OPERATOR_MULTIPLY},
         {"/", TokenType::OPERATOR_DIVIDE},
         {"%", TokenType::OPERATOR_MODULO},
@@ -196,10 +199,10 @@ private:
         {"/=", TokenType::OPERATOR_DIVIDE_ASSIGN},
         {"%=", TokenType::OPERATOR_MODULO_ASSIGN},
         {"&=", TokenType::OPERATOR_AND_ASSIGN},
-        {"|=",TokenType::OPERATOR_OR_ASSIGN},
-        {"^=",TokenType::OPERATOR_XOR_ASSIGN},
-        {"<<=",TokenType::OPERATOR_LEFT_SHIFT_ASSIGN},
-        {">>=",TokenType::OPERATOR_RIGHT_SHIFT_ASSIGN},
+        {"|=", TokenType::OPERATOR_OR_ASSIGN},
+        {"^=", TokenType::OPERATOR_XOR_ASSIGN},
+        {"<<=", TokenType::OPERATOR_LEFT_SHIFT_ASSIGN},
+        {">>=", TokenType::OPERATOR_RIGHT_SHIFT_ASSIGN},
 
         // 关系运算符
         {"==", TokenType::OPERATOR_EQUAL},
@@ -221,38 +224,36 @@ private:
         {"~", TokenType::OPERATOR_BITWISE_NOT},
         {"<<", TokenType::OPERATOR_LEFT_SHIFT},
         {">>", TokenType::OPERATOR_RIGHT_SHIFT}};
-    std::unordered_map<std::string,TokenType> punctuations_={
-        {"(",TokenType::PUNCTUATION_LEFT_PAREN},
-        {")",TokenType::PUNCTUATION_RIGHT_PAREN},
-        {"{",TokenType::PUNCTUATION_LEFT_BRACE},
-        {"}",TokenType::PUNCTUATION_RIGHT_BRACE},
-        {"[",TokenType::PUNCTUATION_LEFT_BRACKET},
-        {"]",TokenType::PUNCTUATION_RIGHT_BRACKET},
-        {",",TokenType::PUNCTUATION_COMMA},
-        {";",TokenType::PUNCTUATION_SEMICOLON},
-        {":",TokenType::PUNCTUATION_COLON},
-        {".",TokenType::PUNCTUATION_DOT},
-        {"->",TokenType::PUNCTUATION_ARROW}
-    };
-    
+    std::unordered_map<std::string, TokenType> punctuations_ = {
+        {"(", TokenType::PUNCTUATION_LEFT_PAREN},
+        {")", TokenType::PUNCTUATION_RIGHT_PAREN},
+        {"{", TokenType::PUNCTUATION_LEFT_BRACE},
+        {"}", TokenType::PUNCTUATION_RIGHT_BRACE},
+        {"[", TokenType::PUNCTUATION_LEFT_BRACKET},
+        {"]", TokenType::PUNCTUATION_RIGHT_BRACKET},
+        {",", TokenType::PUNCTUATION_COMMA},
+        {";", TokenType::PUNCTUATION_SEMICOLON},
+        {":", TokenType::PUNCTUATION_COLON},
+        {".", TokenType::PUNCTUATION_DOT},
+        {"->", TokenType::PUNCTUATION_ARROW}};
+
     std::vector<Token> tokens_;
 
 private:
     Token getNextToken();
 
-    char peek(size_t ahead = 0)const;
+    char peek(size_t ahead = 0) const;
     char advance();
-
 
     void skipWhitespaceOrComments();
     Token readIdentifierOrKeyword();
     Token readNumber();
+    Token readString();
     Token readOperator();
     Token readSymbol();
 
     bool isOperator(char c);
     bool isSymbol(char c);
 };
-
 
 #endif

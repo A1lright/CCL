@@ -1,3 +1,6 @@
-int test(){
-    int b;
+int main(){
+    int c;
+    c = getint();
+    printf("%d",c);
+    return c;
 }

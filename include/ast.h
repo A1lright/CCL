@@ -60,11 +60,11 @@ namespace AST
         virtual void accept(Visitor &visitor) = 0;
     };
 
-    // 表达式基类
+    // 表达式基类，用于计算值 例：a+5
     class Expression : public Node
     {
     };
-    // 语句基类
+    // 语句基类，if语句，for循环语句，赋值语句
     class Statement : public Node
     {
     };
@@ -73,18 +73,24 @@ namespace AST
     {
     };
 
+    //变量声明
+    //TODO 应用Specifier identifier ,先不慌拓展
+    class variableDeclaration:public Declaration{
+        Token token_;
+    };
+
     //------------------具体节点类型----------------------
 
     // 程序节点（根节点）
     class Program : public Node
     {
     public:
-        std::vector<std::unique_ptr<Declaration>> declarations_;
+        std::vector<std::unique_ptr<Node>> declarations_;   //函数或全局声明
 
         void accept(Visitor &visitor) override;
     };
 
-    // 类型说明符
+    // 类型说明符 ，后续可拓展支持更多类型
     class TypeSpecifier : public Node
     {
     public:
@@ -128,7 +134,7 @@ namespace AST
     class ExpressionStatement : public Statement
     {
     public:
-        std::unique_ptr<Expression> expression_;
+        std::unique_ptr<Expression> expression_;    //可能为空（空语句）
 
         void accept(Visitor &visitor) override;
     };

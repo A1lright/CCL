@@ -1,7 +1,9 @@
 #include <iostream>
 #include "lexer.h"
-#include "parser.h"
 #include <fstream>
+//#include "parser.h"
+#include"parserSysy.h"
+#include "SyntaxOutputVisitor.hpp"
 
 int main(int argc,char *argv[])
 {
@@ -26,15 +28,20 @@ int main(int argc,char *argv[])
     file.close();
     
 
+
     Lexer lexer(sourceCode);
-    lexer.tokenize();
+     lexer.tokenize();
     std::vector<Token> tokenVector = lexer.getTokens();
     for(Token token:tokenVector){
-        std::cout<<token;
+  //      std::cout<<token.tokenTypeToString(token.tokenType_)<<" "<<token.value_<<std::endl;
     }
 
     Parser parser(tokenVector);
-    parser.parse();
+    //std::unique_ptr<AST::Program> program = parser.parse();
+    std::unique_ptr<AST::CompUnit> program = parser.parseCompUnit();
 
+    SyntaxOutputVisitor visitor;
+    program->accept(visitor);
+    
     return 0;
 }
