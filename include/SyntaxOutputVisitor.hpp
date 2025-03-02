@@ -1,5 +1,5 @@
 #pragma once
-#include "parserSysy.h"
+#include "parser.h"
 #include <iostream>
 #include <memory>
 #include <unordered_set>
@@ -86,7 +86,7 @@ public:
             item->accept(*this); // 遍历BlockItem（自动过滤BlockItem标签）
         }
         std::cout << "RBRACE }" << std::endl; // 输出 '}'
-        outputNonTerminal("Block");         // 输出 <Block>
+        outputNonTerminal("Block");           // 输出 <Block>
     }
 
     void visit(AssignStmt &node)
@@ -133,7 +133,7 @@ public:
             node.exp_->accept(*this); // 输出返回值表达式
         }
         std::cout << "SEMICN ;" << std::endl; // 输出 ';'
-        outputNonTerminal("Stmt");     // 输出 <Stmt>
+        outputNonTerminal("Stmt");            // 输出 <Stmt>
     }
 
     void visit(IOStmt &node)
@@ -153,7 +153,7 @@ public:
         {
             std::cout << "PRINTFTK printf" << std::endl;
             std::cout << "LPARENT (" << std::endl;
-            std::cout <<"STRCON "<< node.formatString_ << std::endl;
+            std::cout << "STRCON " << node.formatString_ << std::endl;
 
             if (!node.args_.empty())
             {
@@ -213,24 +213,9 @@ public:
 
     void visit(UnaryExp &node)
     {
-        // 输出运算符（如 -, !）
-        // switch (node.op)
-        // {
-        // case UnaryExp::Op::Minus:
-        //     std::cout << "-" << std::endl;
-        //     break;
-        // case UnaryExp::Op::Not:
-        //     std::cout << "!" << std::endl;
-        //     break;
-        // case UnaryExp::Op::Plus:
-        //     std::cout << "+" << std::endl;
-        //     break;
-        // default:
-        //     break;
-        // }
-
-        node.operand_->accept(*this); // 递归解析操作数
-        outputNonTerminal("UnaryExp");     // 输出父级非终结符（如 <UnaryExp>）
+        // 逻辑与InitVal类似，但只能包含ConstExp
+        node.operand_->accept(*this);
+        outputNonTerminal("UnaryExp"); // 输出父级非终结符（如 <UnaryExp>）
     }
 
     void visit(CallExp &node)
@@ -374,6 +359,28 @@ public:
     void visit(BlockItem &node)
     {
         node.item_->accept(*this);
+    }
+
+    void visit(PrimaryExp &node){
+        if (std::holds_alternative<std::unique_ptr<AST::Exp>>(node.operand_))
+        {
+            auto *exp = std::get_if<std::unique_ptr<AST::Exp>>(&node.operand_);
+            //  解析单个表达式
+
+            (*exp)->accept(*this);
+        }
+        else if(std::holds_alternative<std::unique_ptr<AST::LVal>>(node.operand_))
+        {
+            auto *lVal = std::get_if<std::unique_ptr<AST::LVal>>(&node.operand_);
+
+            (*lVal)->accept(*this);
+        }else{
+            auto *num= std::get_if<std::unique_ptr<AST::Number>>(&node.operand_);
+
+            (*num)->accept(*this);
+        }
+        
+        outputNonTerminal("PrimaryExp");
     }
 
 private:

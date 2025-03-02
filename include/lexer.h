@@ -14,25 +14,25 @@ enum class TokenType
     UNKNOW,
     // 关键字
     KEYWORD_AUTO,
-    KEYWORD_BREAK, // BREAKTK
+    KEYWORD_BREAK,      // BREAKTK
     KEYWORD_CASE,
     KEYWORD_CHAR,
-    KEYWORD_CONST,    // CONSTTK
-    KEYWORD_CONTINUE, // CONTINUETK
+    KEYWORD_CONST,      // CONSTTK
+    KEYWORD_CONTINUE,   // CONTINUETK
     KEYWORD_DEFAULT,
     KEYWORD_DO,
     KEYWORD_DOUBLE,
-    KEYWORD_ELSE, // ELSETK
+    KEYWORD_ELSE,       // ELSETK
     KEYWORD_ENUM,
     KEYWORD_EXTERN,
     KEYWORD_FLOAT,
     KEYWORD_FOR,
     KEYWORD_GOTO,
-    KEYWORD_IF,  // IFTK
-    KEYWORD_INT, // INTTK
+    KEYWORD_IF,         // IFTK
+    KEYWORD_INT,        // INTTK
     KEYWORD_LONG,
     KEYWORD_REGISTER,
-    KEYWORD_RETURN, // RETURNTK
+    KEYWORD_RETURN,     // RETURNTK
     KEYWORD_SHORT,
     KEYWORD_SIGNED,
     KEYWORD_SIZEOF,
@@ -42,22 +42,22 @@ enum class TokenType
     KEYWORD_TYPEDEF,
     KEYWORD_UNION,
     KEYWORD_UNSIGNED,
-    KEYWORD_VOID, // VOIDTK
+    KEYWORD_VOID,       // VOIDTK
     KEYWORD_VOLATILE,
-    KEYWORD_WHILE, // WHILETK
+    KEYWORD_WHILE,      // WHILETK
 
-    KEYWORD_GETINT, // GETINTTK
-    KEYWORD_PRINTF, //  PRINTFTK
-    KEYWORD_MAIN,   //MAINTK
+    KEYWORD_GETINT,     // GETINTTK
+    KEYWORD_PRINTF,     //  PRINTFTK
+    KEYWORD_MAIN,       //MAINTK
 
     // 标识符
-    IDENTIFIER, // IDENFR
+    IDENTIFIER,         // IDENFR
 
     // 常量
-    CONSTANT_INTEGER, // INTCON
+    CONSTANT_INTEGER,   // INTCON
     CONSTANT_FLOAT,
     CONSTANT_CHAR,
-    CONSTANT_STRING, // STRCON
+    CONSTANT_STRING,    // STRCON
 
     // 运算符
     OPERATOR_ASSIGN,             // =     ASSIGN
@@ -179,9 +179,11 @@ private:
         {"void", TokenType::KEYWORD_VOID},
         {"volatile", TokenType::KEYWORD_VOLATILE},
         {"while", TokenType::KEYWORD_WHILE},
+
         {"getint",TokenType::KEYWORD_GETINT},
         {"printf",TokenType::KEYWORD_PRINTF},
         {"main",TokenType::KEYWORD_MAIN}};
+
     std::unordered_map<std::string, TokenType> operators_ = {
         {"+", TokenType::OPERATOR_PLUS},
         {"-", TokenType::OPERATOR_MINUS},
@@ -224,6 +226,7 @@ private:
         {"~", TokenType::OPERATOR_BITWISE_NOT},
         {"<<", TokenType::OPERATOR_LEFT_SHIFT},
         {">>", TokenType::OPERATOR_RIGHT_SHIFT}};
+        
     std::unordered_map<std::string, TokenType> punctuations_ = {
         {"(", TokenType::PUNCTUATION_LEFT_PAREN},
         {")", TokenType::PUNCTUATION_RIGHT_PAREN},

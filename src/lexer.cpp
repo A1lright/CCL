@@ -78,7 +78,7 @@ std::string Token::tokenTypeToString(TokenType tokenType)
     case TokenType::KEYWORD_GETINT:
         return "GETINTTK";
     case TokenType::KEYWORD_PRINTF:
-        return "PRINTTK";
+        return "PRINTFTK";
     case TokenType::KEYWORD_MAIN:
         return "MAINTK";
 
@@ -215,7 +215,6 @@ void Lexer::tokenize()
     while (token.tokenType_ != TokenType::END_OF_FILE)
     {
         token = getNextToken();
-        //std::cout << token;
         tokens_.push_back(token);
     }
 }
@@ -300,7 +299,7 @@ Token Lexer::readIdentifierOrKeyword()
     int startColumn = currentColumn_;
 
     std::string identifier;
-    while (std::isalpha(peek()) || peek() == '_')
+    while (std::isalnum(peek()) || peek() == '_')
     {
         identifier += advance();
     }
@@ -545,6 +544,10 @@ void Lexer::skipWhitespaceOrComments()
                 {
                     advance();
                 }
+                if (peek() == '\0') { // 文件结束
+                    tokens_.push_back(Token(TokenType::ERROR, "Unclosed comment",currentLine_,currentColumn_));
+                    return;
+                }
                 advance();
                 advance();
             }
@@ -576,7 +579,6 @@ bool Lexer::isSymbol(char c)
 std::ostream &operator<<(std::ostream &os, const Token &token)
 {
     os << std::left;
-    // os<<std::setw(30)<<"TokenType:"<<std::setw(10)<<"value:"<<std::setw(10)<<"line:"<<std::setw(10)<<"colume:"<<std::endl;
     os << std::setw(30) << Token::tokenTypeToString(token.tokenType_) << std::setw(10) << token.value_ << std::setw(10) << token.line_ << std::setw(10) << token.colume_ << std::endl;
     return os;
 }

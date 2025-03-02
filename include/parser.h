@@ -1,102 +1,108 @@
-// #include <memory>
-// #include <vector>
-// #include "lexer.h"
-// #include <stdexcept>
-// #include "ast.h"
+#ifndef PARSER_H
+#define PARSER_H
+#pragma once
+#include "astSysy.h"
+#include "lexer.h"
+#include <vector>
+#include <memory>
+#include <stdexcept>
+#include "symbolTable.h"
+using namespace AST;
 
-// class Parser
-// {
-// public:
-//     explicit Parser(const std::vector<Token> &tokens);
+class Parser
+{
+public:
+    explicit Parser(std::vector<Token> &tokens);
+    // 编译单元解析
+    std::unique_ptr<CompUnit> parseCompUnit();
 
-//     // 程序入口：解析整个程序
-//     std::unique_ptr<AST::Program> parse();
+private:
+    std::vector<Token> &tokens_;
+    size_t current_;
+    Token token_;
 
-// private:
-//     const std::vector<Token> &tokens_;
-//     size_t currentPos_;
-//     Token currentToken_;
+    // =======辅助方法====================================================================
+    Token peek(size_t ahead = 0) const;
+    void advance();
+    bool match(TokenType type);
+    bool check(TokenType type) const;
+    Token consume(TokenType type, const std::string &err_msg);
 
-//     //============基础方法==============================================================
-//     void advance();//currentToken_指向currentPos 并且 currentPos++
-//     bool match(TokenType type);//当前currentToken_Type==type 后移一个Token
-//     Token consume(TokenType type, const std::string &message);//同match
-//     bool currentTokenType(TokenType type);
-    
-//     //错误恢复：同步到下一个声明或语句边界
-//     void synchronize();
+    // 恢复错误：同步到下一个声明或语句边界
+    void synchronize();
 
-//     //==================声明解析==================
+    // 非终结符解析函数
+    // 声明解析
+    std::unique_ptr<Decl> parseDecl();
+    std::unique_ptr<ConstDecl> parseConstDecl();
+    std::unique_ptr<ConstDef> parseConstDef();
+    std::unique_ptr<VarDecl> parseVarDecl();
+    std::unique_ptr<VarDef> parseVarDef();
 
-//     bool checkDeclaration()const; //检测tokentype是否为int void char 等类型
+    // 函数定义解析
+    std::unique_ptr<FuncDef> parseFuncDef();
+    std::unique_ptr<MainFuncDef> parseMainFuncDef();
+    std::unique_ptr<FuncParam> parseFuncParam();
 
-//     std::unique_ptr<AST::Declaration> parseDeclaration();
+    // 语句解析
+    std::unique_ptr<Block> parseBlock();
+    std::unique_ptr<BlockItem> parseBlockItem();
+    std::unique_ptr<Stmt> parseStmt();
+    std::unique_ptr<IfStmt> parseIfStmt();         // if语句
+    std::unique_ptr<WhileStmt> parseWhileStmt();   // while循环
+    std::unique_ptr<ReturnStmt> parseReturnStmt(); // return语句
+    std::unique_ptr<AssignStmt> parseAssignStmt();
+    std::unique_ptr<IOStmt> parsePrintfStmt();
+    std::unique_ptr<IOStmt> parseGetintStmt();
 
-//     std::unique_ptr<AST::TypeSpecifier>parseType();
+    // 表达式
+    std::unique_ptr<Exp> parseExp();
+    std::unique_ptr<Exp> parseLogicalOrExp();
+    std::unique_ptr<Exp> parseLogicalAndExp();
+    std::unique_ptr<Exp> parseEqExp();
+    std::unique_ptr<Exp> parseRelExp();
+    std::unique_ptr<Exp> parseAddExp();
+    std::unique_ptr<Exp> parseMulExp();
+    std::unique_ptr<Exp> parseUnaryExp();
+    std::unique_ptr<PrimaryExp> parsePrimaryExp();
+    std::unique_ptr<LVal> parseLVal();
+    std::unique_ptr<Number> parseNumber();
 
+    // 初始化值
+    std::unique_ptr<ConstInitVal> parseConstInitVal();
+    std::unique_ptr<InitVal> parseInitVal();
 
-//     //==================函数声明===================
-//     std::unique_ptr<AST::FunctionDeclaration>parseFunctionDeclaration(
-//         std::unique_ptr<AST::TypeSpecifier>returnType
-//     );
+    std::unique_ptr<FuncType> parseFuncType();
+    std::unique_ptr<BType> parseBType();
+    std::unique_ptr<Exp> parseConstExp();
+    std::unique_ptr<Stmt> parseExprStmt();
+    std::unique_ptr<CallExp> parseCallExp();
 
-//     std::vector<std::unique_ptr<AST::Parameter>>parseParameterList();
+    bool isAtEnd();
+    Token previous();
+};
 
-//     std::unique_ptr<AST::Parameter>parseParameter();
+class ParseError : public std::exception
+{
+public:
+    ParseError(size_t line, const std::string &message)
+        : line_(line), message_("Error at line " + std::to_string(line) + ": " + message) {}
 
+    // 返回完整的错误信息（C风格字符串）
+    const char *what() const noexcept override
+    {
+        return message_.c_str();
+    }
 
-//     //=====================语句解析=================
-//     std::unique_ptr<AST::Statement>ParseStatement();
+    // 获取错误发生的行号
+    size_t getLine() const noexcept
+    {
+        return line_;
+    }
 
-//     //块语句
-//     std::unique_ptr<AST::CompoundStatement>parseBlockStatement();
+private:
+    size_t line_;         // 错误行号（从1开始）
+    std::string message_; // 完整错误信息
+};
 
-//     //if语句
-//     std::unique_ptr<AST::IfStatement>parseIfStatement();
-
-//     //while循环
-//     std::unique_ptr<AST::WhileStatement>parseWhileStatement();
-
-//     //return语句
-//     std::unique_ptr<AST::ReturnStatement>parseReturnStatement();
-
-//     //表达式语句
-//     std::unique_ptr<AST::ExpressionStatement>parseExpressionStatement();
-
-//     //===============表达式解析=======================
-//     std::unique_ptr<AST::Expression> parseExpression();
-
-//     //赋值表达式（右结合）
-//     std::unique_ptr<AST::Expression>parseAssignment();
-
-//     //关系表达式（==，!=）
-//     std::unique_ptr<AST::Expression>parseEquality();
-
-//     //比较表达式（<,<=,>,>=）
-//     std::unique_ptr<AST::Expression>parseRelational();
-
-//     //加减表达式
-//     std::unique_ptr<AST::Expression>parseAdditive();
-
-//     //乘除表达式
-//     std::unique_ptr<AST::Expression>parseMultiplicative();
-
-//     //基本表达式元素
-//     std::unique_ptr<AST::Expression> parsePrimary();
-
-//     //函数调用
-//     std::unique_ptr<AST::FunctionCall>parseFunctionCall();
-
-//     //工具函数：创建二元表达式
-//     std::unique_ptr<AST::BinaryExpression>makeBinary(
-//         std::unique_ptr<AST::Expression>lhs,const std::string&op,int precedence);
-
-//     //获取当前优先级
-//     int getCurrentPrecedence()const;
-
-//     bool check(TokenType type)const{
-//         return currentToken_.tokenType_==type;
-//     }
-
-//     std::unique_ptr<AST::Expression>parseRightOperand(int precedence);
-// };
+#endif

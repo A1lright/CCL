@@ -1,9 +1,9 @@
 #include <iostream>
 #include "lexer.h"
 #include <fstream>
-//#include "parser.h"
-#include"parserSysy.h"
+#include"parser.h"
 #include "SyntaxOutputVisitor.hpp"
+#include "symbolTable.h"
 
 int main(int argc,char *argv[])
 {
@@ -30,11 +30,14 @@ int main(int argc,char *argv[])
 
 
     Lexer lexer(sourceCode);
-     lexer.tokenize();
+    lexer.tokenize();
     std::vector<Token> tokenVector = lexer.getTokens();
     for(Token token:tokenVector){
-  //      std::cout<<token.tokenTypeToString(token.tokenType_)<<" "<<token.value_<<std::endl;
+        std::cout<<token.tokenTypeToString(token.tokenType_)<<" "<<token.value_<<std::endl;
     }
+
+    //auto  symbolTable = std::make_unique<SymbolTable>();
+    SymbolTable symbolTable;
 
     Parser parser(tokenVector);
     //std::unique_ptr<AST::Program> program = parser.parse();

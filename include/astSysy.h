@@ -52,10 +52,11 @@ namespace AST
 
     // 表达式节点
     class LVal;      // 左值（变量或数组元素）
+    class PrimaryExp;
     class BinaryExp; // 二元运算表达式（a + b, a && b 等）
-    class UnaryExp;  // 一元运算表达式（-a, !cond）
-    class CallExp;   // 函数调用表达式（func(a, b)）
-    class Number;    // 字面量（数值常量）
+    class UnaryExp; // 一元运算表达式（-a, !cond）
+    class CallExp;  // 函数调用表达式（func(a, b)）
+    class Number;   // 字面量（数值常量）
 
     // 编译单元节点
     class CompUnit;
@@ -94,6 +95,7 @@ namespace AST
 
         // 表达式
         virtual void visit(LVal &) = 0;
+        virtual void visit(PrimaryExp &) = 0;
         virtual void visit(BinaryExp &) = 0;
         virtual void visit(UnaryExp &) = 0;
         virtual void visit(CallExp &) = 0;
@@ -344,11 +346,40 @@ namespace AST
         }
     };
 
+    class PrimaryExp : public Exp
+    {
+    public:
+        std::variant<std::unique_ptr<Exp>, std::unique_ptr<LVal>, std::unique_ptr<Number>> operand_;
+
+        void accept(Visitor &v) override
+        {
+            v.visit(*this);
+        }
+    };
+
+    // 一元运算表达式 
+    class UnaryExp : public Exp 
+    {
+    public:
+        enum class Op
+        {
+            Plus,
+            Minus,
+            Not
+        };
+        Op op;
+        std::unique_ptr<PrimaryExp> operand_;
+
+        void accept(Visitor &v) override
+        {
+            v.visit(*this);
+        }
+    };
+
     // 二元运算表达式
     class BinaryExp : public Exp
     {
     public:
-        
         enum class Op
         {
             Add,
@@ -370,25 +401,6 @@ namespace AST
         Op op;
         std::unique_ptr<Exp> left_;
         std::unique_ptr<Exp> right_;
-
-        void accept(Visitor &v) override
-        {
-            v.visit(*this);
-        }
-    };
-
-    // 一元运算表达式   ???
-    class UnaryExp : public Exp
-    {
-    public:
-        enum class Op
-        {
-            Plus,
-            Minus,
-            Not
-        };
-        Op op;
-        std::unique_ptr<Exp> operand_;
 
         void accept(Visitor &v) override
         {
