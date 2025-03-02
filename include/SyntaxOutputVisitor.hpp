@@ -94,6 +94,7 @@ public:
         node.lval_->accept(*this);            // 输出左值（如 IDENFR a）
         std::cout << "ASSIGN =" << std::endl; // 输出 '='
         node.exp_->accept(*this);             // 输出右值表达式
+        outputNonTerminal("Exp");
         std::cout << "SEMICN ;" << std::endl; // 输出 ';'
         outputNonTerminal("Stmt");            // 输出 <Stmt>
     }
@@ -131,6 +132,7 @@ public:
         if (node.exp_)
         {
             node.exp_->accept(*this); // 输出返回值表达式
+            outputNonTerminal("Exp");
         }
         std::cout << "SEMICN ;" << std::endl; // 输出 ';'
         outputNonTerminal("Stmt");            // 输出 <Stmt>
@@ -161,6 +163,7 @@ public:
                 for (size_t i = 0; i < node.args_.size(); ++i)
                 {
                     node.args_[i]->accept(*this);
+                    outputNonTerminal("Exp");
                     if (i != node.args_.size() - 1)
                     {
                         std::cout << "COMMA ," << std::endl;
@@ -187,35 +190,142 @@ public:
         outputNonTerminal("LVal"); // 输出 <LVal>
     }
 
-    void visit(BinaryExp &node)
-    {
-        node.left_->accept(*this); // 递归解析左操作数
-        switch (node.op)
-        {
-        case BinaryExp::Op::Add:
-            std::cout << "+" << std::endl;
-            break;
-        case BinaryExp::Op::And:
-            std::cout << "&" << std::endl;
-            break;
-        case BinaryExp::Op::Div:
-            std::cout << "/" << std::endl;
-            break;
-        case BinaryExp::Op::Eq:
-            std::cout << "=" << std::endl;
-            break;
-        case BinaryExp::Op::Ge:
-            std::cout << ">" << std::endl;
-        }
-        node.right_->accept(*this);  // 递归解析右操作数
-        outputNonTerminal("AddExp"); // 输出父级非终结符（如 <AddExp>）
-    }
+    // void visit(BinaryExp &node)
+    // {
+    //     node.left_->accept(*this); // 递归解析左操作数
+    //     switch (node.op)
+    //     {
+    //     case BinaryExp::Op::Add:
+    //         std::cout << "+" << std::endl;
+    //         break;
+    //     case BinaryExp::Op::And:
+    //         std::cout << "&" << std::endl;
+    //         break;
+    //     case BinaryExp::Op::Div:
+    //         std::cout << "/" << std::endl;
+    //         break;
+    //     case BinaryExp::Op::Eq:
+    //         std::cout << "=" << std::endl;
+    //         break;
+    //     case BinaryExp::Op::Ge:
+    //         std::cout << ">" << std::endl;
+    //     }
+    //     node.right_->accept(*this);  // 递归解析右操作数
+    //     outputNonTerminal("AddExp"); // 输出父级非终结符（如 <AddExp>）
+    // }
 
     void visit(UnaryExp &node)
     {
         // 逻辑与InitVal类似，但只能包含ConstExp
         node.operand_->accept(*this);
         outputNonTerminal("UnaryExp"); // 输出父级非终结符（如 <UnaryExp>）
+    }
+
+    void visit(AddExp &node)
+    {
+
+        // 处理所有元素（操作数和运算符交替存储）
+
+        for (auto &elem : node.elements_)
+        {
+            if (auto ptr = std::get_if<std::unique_ptr<Exp>>(&elem))
+            {
+                (*ptr)->accept(*this); // 递归处理MulExp
+            }
+            else
+            {
+                TokenType op = std::get<TokenType>(elem);
+                std::cout << Token::tokenTypeToString(op) << std::endl;
+            }
+        }
+        outputNonTerminal("AddExp");
+    }
+    void visit(MulExp &node)
+    {
+
+        for (auto &elem : node.elements_)
+        {
+            if (auto ptr = std::get_if<std::unique_ptr<Exp>>(&elem))
+            {
+                (*ptr)->accept(*this); // 递归处理UnaryExp
+            }
+            else
+            {
+                TokenType op = std::get<TokenType>(elem);
+                os_ << Token::tokenTypeToString(op) << std::endl;
+            }
+        }
+        outputNonTerminal("MulExp");
+    }
+
+    void visit(LOrExp &node)
+    {
+
+        for (auto &elem : node.elements_)
+        {
+            if (auto ptr = std::get_if<std::unique_ptr<Exp>>(&elem))
+            {
+                (*ptr)->accept(*this); // 递归处理LAndExp
+            }
+            else
+            {
+                std::cout << "||" << std::endl;
+            }
+        }
+        outputNonTerminal("LOrExp");
+    }
+
+    void visit(LAndExp &node)
+    {
+
+        for (auto &elem : node.elements_)
+        {
+            if (auto ptr = std::get_if<std::unique_ptr<Exp>>(&elem))
+            {
+                (*ptr)->accept(*this); // 递归处理EqExp
+            }
+            else
+            {
+                std::cout << "&&" << std::endl;
+            }
+        }
+        outputNonTerminal("LAndExp");
+    }
+
+    void visit(EqExp &node)
+    {
+
+        for (auto &elem : node.elements_)
+        {
+            if (auto ptr = std::get_if<std::unique_ptr<Exp>>(&elem))
+            {
+                (*ptr)->accept(*this); // 递归处理RelExp
+            }
+            else
+            {
+                TokenType op = std::get<TokenType>(elem);
+                std::cout << Token::tokenTypeToString(op) << std::endl;
+            }
+        }
+        outputNonTerminal("EqExp");
+    }
+
+    void visit(RelExp &node)
+    {
+
+        for (auto &elem : node.elements_)
+        {
+            if (auto ptr = std::get_if<std::unique_ptr<Exp>>(&elem))
+            {
+                (*ptr)->accept(*this); // 递归处理AddExp
+            }
+            else
+            {
+                TokenType op = std::get<TokenType>(elem);
+                std::cout << Token::tokenTypeToString(op) << std::endl;
+            }
+        }
+        outputNonTerminal("RelExp");
     }
 
     void visit(CallExp &node)
@@ -361,25 +471,29 @@ public:
         node.item_->accept(*this);
     }
 
-    void visit(PrimaryExp &node){
+    void visit(PrimaryExp &node)
+    {
         if (std::holds_alternative<std::unique_ptr<AST::Exp>>(node.operand_))
         {
             auto *exp = std::get_if<std::unique_ptr<AST::Exp>>(&node.operand_);
             //  解析单个表达式
 
             (*exp)->accept(*this);
+            outputNonTerminal("Exp");
         }
-        else if(std::holds_alternative<std::unique_ptr<AST::LVal>>(node.operand_))
+        else if (std::holds_alternative<std::unique_ptr<AST::LVal>>(node.operand_))
         {
             auto *lVal = std::get_if<std::unique_ptr<AST::LVal>>(&node.operand_);
 
             (*lVal)->accept(*this);
-        }else{
-            auto *num= std::get_if<std::unique_ptr<AST::Number>>(&node.operand_);
+        }
+        else
+        {
+            auto *num = std::get_if<std::unique_ptr<AST::Number>>(&node.operand_);
 
             (*num)->accept(*this);
         }
-        
+
         outputNonTerminal("PrimaryExp");
     }
 

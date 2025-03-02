@@ -51,9 +51,15 @@ namespace AST
     class IOStmt;     // 输入输出语句（getint/printf）
 
     // 表达式节点
-    class LVal;      // 左值（变量或数组元素）
+    class LVal; // 左值（变量或数组元素）
     class PrimaryExp;
-    class BinaryExp; // 二元运算表达式（a + b, a && b 等）
+    // class BinaryExp; // 二元运算表达式（a + b, a && b 等）
+    class AddExp;
+    class MulExp;
+    class LOrExp;
+    class LAndExp;
+    class EqExp;
+    class RelExp;
     class UnaryExp; // 一元运算表达式（-a, !cond）
     class CallExp;  // 函数调用表达式（func(a, b)）
     class Number;   // 字面量（数值常量）
@@ -96,8 +102,16 @@ namespace AST
         // 表达式
         virtual void visit(LVal &) = 0;
         virtual void visit(PrimaryExp &) = 0;
-        virtual void visit(BinaryExp &) = 0;
+        // virtual void visit(BinaryExp &) = 0;
         virtual void visit(UnaryExp &) = 0;
+        virtual void visit(AddExp &) = 0;
+        virtual void visit(MulExp &) = 0;
+
+        virtual void visit(LOrExp &) = 0;
+        virtual void visit(LAndExp &) = 0;
+        virtual void visit(EqExp &) = 0;
+        virtual void visit(RelExp &) = 0;
+
         virtual void visit(CallExp &) = 0;
         virtual void visit(Number &) = 0;
 
@@ -357,8 +371,8 @@ namespace AST
         }
     };
 
-    // 一元运算表达式 
-    class UnaryExp : public Exp 
+    // 一元运算表达式
+    class UnaryExp : public Exp
     {
     public:
         enum class Op
@@ -376,36 +390,110 @@ namespace AST
         }
     };
 
-    // 二元运算表达式
-    class BinaryExp : public Exp
+    // // 二元运算表达式
+    // class BinaryExp : public Exp
+    // {
+    // public:
+    //     enum class Op
+    //     {
+    //         Add,
+    //         Sub,
+    //         Mul,
+    //         Div,
+    //         Mod,
+    //         Lt,
+    //         Le,
+    //         Gt,
+    //         Ge,
+    //         Eq,
+    //         Neq,
+    //         And,
+    //         Or
+    //     };
+    //     BinaryExp(Op &op, std::unique_ptr<Exp> left, std::unique_ptr<Exp> right)
+    //         : op(op), left_(std::move(left)), right_(std::move(right)) {}
+    //     Op op;
+    //     std::unique_ptr<Exp> left_;
+    //     std::unique_ptr<Exp> right_;
+
+    //     void accept(Visitor &v) override
+    //     {
+    //         v.visit(*this);
+    //     }
+    // };
+
+    // 加法表达式层（对应 + - 运算）
+    class AddExp : public Exp
     {
     public:
-        enum class Op
-        {
-            Add,
-            Sub,
-            Mul,
-            Div,
-            Mod,
-            Lt,
-            Le,
-            Gt,
-            Ge,
-            Eq,
-            Neq,
-            And,
-            Or
-        };
-        BinaryExp(Op &op, std::unique_ptr<Exp> left, std::unique_ptr<Exp> right)
-            : op(op), left_(std::move(left)), right_(std::move(right)) {}
-        Op op;
-        std::unique_ptr<Exp> left_;
-        std::unique_ptr<Exp> right_;
+        std::vector<std::variant<
+            std::unique_ptr<Exp>, // 操作数
+            TokenType                // 运算符（PLUS/MINUS）
+            >>
+            elements_;
 
-        void accept(Visitor &v) override
-        {
-            v.visit(*this);
-        }
+        void accept(Visitor &v) override { v.visit(*this); }
+    };
+
+    // 乘法表达式层（对应 * / % 运算）
+    class MulExp : public Exp
+    {
+    public:
+        std::vector<std::variant<
+            std::unique_ptr<Exp>, // 操作数
+            TokenType             // 运算符（MULT/DIV/MOD）
+            >>
+            elements_;
+
+        void accept(Visitor &v) override { v.visit(*this); }
+    };
+
+    class LOrExp : public Exp
+    {
+    public:
+        std::vector<std::variant<
+            std::unique_ptr<Exp>, // 操作数
+            TokenType             // 运算符（||）
+            >>
+            elements_;
+
+        void accept(Visitor &v) override { v.visit(*this); }
+    };
+
+    class LAndExp : public Exp
+    {
+    public:
+        std::vector<std::variant<
+            std::unique_ptr<Exp>, // 操作数
+            TokenType             // 运算符（&&）
+            >>
+            elements_;
+
+        void accept(Visitor &v) override { v.visit(*this); }
+    };
+
+    class EqExp : public Exp
+    {
+    public:
+        std::vector<std::variant<
+            std::unique_ptr<Exp>, // 操作数
+            TokenType             // 运算符（==/!=）
+            >>
+            elements_;
+
+        void accept(Visitor &v) override { v.visit(*this); }
+    };
+
+    class RelExp : public Exp
+    {
+    public:
+        std::vector<std::variant<
+            std::unique_ptr<Exp>, // 操作数
+            TokenType             // 运算符（<、>、<=、>=）
+            >>
+            elements_;
+
+        void accept(Visitor &v) override { v.visit(*this); }
     };
 
     // 函数调用表达式

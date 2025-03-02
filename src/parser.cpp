@@ -315,125 +315,129 @@ std::unique_ptr<Exp> Parser::parseExp()
 
 std::unique_ptr<Exp> Parser::parseLogicalOrExp()
 {
-    auto expr = parseLogicalAndExp();
-    while (match(TokenType::OPERATOR_LOGICAL_OR))
-    {
-        auto op = BinaryExp::Op::Or;
-        auto right = parseLogicalAndExp();
-        expr = std::make_unique<BinaryExp>(op, std::move(expr), std::move(right));
+    auto exp = std::make_unique<LOrExp>();
+    exp->elements_.push_back(parseLogicalAndExp());
+    
+    while (match(TokenType::OPERATOR_LOGICAL_OR)) {
+        exp->elements_.push_back(TokenType::OPERATOR_LOGICAL_OR);
+        exp->elements_.push_back(parseLogicalAndExp());
     }
-    return expr;
+    return exp;
 }
 
 std::unique_ptr<Exp> Parser::parseLogicalAndExp()
 {
-    auto expr = parseEqExp();
-    while (match(TokenType::OPERATOR_LOGICAL_AND))
-    {
-        auto op = BinaryExp::Op::And;
-        auto right = parseEqExp();
-        expr = std::make_unique<BinaryExp>(op, std::move(expr), std::move(right));
+    auto exp = std::make_unique<LAndExp>();
+    exp->elements_.push_back(parseEqExp());
+    
+    while (match(TokenType::OPERATOR_LOGICAL_AND)) {
+        exp->elements_.push_back(TokenType::OPERATOR_LOGICAL_AND);
+        exp->elements_.push_back(parseEqExp());
     }
-    return expr;
+    return exp;
 }
 
 // 类似地实现其他优先级层次（Equality, Relational, Additive, Multiplicative）
 
 std::unique_ptr<Exp> Parser::parseEqExp()
 {
-    auto expr = parseRelExp();
-    while (match(TokenType::OPERATOR_EQUAL) || match(TokenType::OPERATOR_NOT_EQUAL))
-    {
-        BinaryExp::Op op;
-        if (match(TokenType::OPERATOR_EQUAL))
-        {
-            op = BinaryExp::Op::Eq;
+    auto exp = std::make_unique<EqExp>();
+    exp->elements_.push_back(parseRelExp());
+    
+    while (true) {
+        if (match(TokenType::OPERATOR_EQUAL)) {
+            exp->elements_.push_back(TokenType::OPERATOR_EQUAL);
+            exp->elements_.push_back(parseRelExp());
+        } else if (match(TokenType::OPERATOR_NOT_EQUAL)) {
+            exp->elements_.push_back(TokenType::OPERATOR_NOT_EQUAL);
+            exp->elements_.push_back(parseRelExp());
+        } else {
+            break;
         }
-        else
-        {
-            op = BinaryExp::Op::Neq;
-        }
-        auto right = parseRelExp();
-        expr = std::make_unique<BinaryExp>(op, std::move(expr), std::move(right));
     }
-    return expr;
+    return exp;
 }
 
 std::unique_ptr<Exp> Parser::parseRelExp()
 {
-    auto expr = parseAddExp();
-    while (match(TokenType::OPERATOR_LESS) || match(TokenType::OPERATOR_GREATER) || match(TokenType::OPERATOR_LESS_EQUAL) || match(TokenType::OPERATOR_GREATER_EQUAL))
-    {
-        BinaryExp::Op op;
-        if (match(TokenType::OPERATOR_LESS))
-        {
-            op = BinaryExp::Op::Lt;
+    auto exp = std::make_unique<RelExp>();
+    exp->elements_.push_back(parseAddExp());
+    
+    while (true) {
+        if (match(TokenType::OPERATOR_LESS)) {
+            exp->elements_.push_back(TokenType::OPERATOR_LESS);
+            exp->elements_.push_back(parseAddExp());
+        } else if (match(TokenType::OPERATOR_GREATER)) {
+            exp->elements_.push_back(TokenType::OPERATOR_GREATER);
+            exp->elements_.push_back(parseAddExp());
+        } else if (match(TokenType::OPERATOR_LESS_EQUAL)) {
+            exp->elements_.push_back(TokenType::OPERATOR_LESS_EQUAL);
+            exp->elements_.push_back(parseAddExp());
+        } else if (match(TokenType::OPERATOR_GREATER_EQUAL)) {
+            exp->elements_.push_back(TokenType::OPERATOR_GREATER_EQUAL);
+            exp->elements_.push_back(parseAddExp());
+        } else {
+            break;
         }
-        else if (match(TokenType::OPERATOR_GREATER))
-        {
-            op = BinaryExp::Op::Gt;
-        }
-        else if (match(TokenType::OPERATOR_LESS_EQUAL))
-        {
-            op = BinaryExp::Op::Le;
-        }
-        else
-        {
-            op = BinaryExp::Op::Ge;
-        }
-        auto right = parseAddExp();
-        expr = std::make_unique<BinaryExp>(op, std::move(expr), std::move(right));
     }
-    return expr;
+    return exp;
 }
 
-std::unique_ptr<Exp> Parser::parseAddExp()
+std::unique_ptr<AddExp> Parser::parseAddExp()
 {
-    auto expr = parseMulExp();
-    while (match(TokenType::OPERATOR_PLUS) || match(TokenType::OPERATOR_MINUS))
+    auto exp = std::make_unique<AddExp>();
+
+    // 第一个元素必须是MulExp
+    exp->elements_.push_back(parseMulExp());
+
+    // 后续处理运算符和操作数
+    while (true)
     {
-        BinaryExp::Op op;
         if (match(TokenType::OPERATOR_PLUS))
         {
-            op = BinaryExp::Op::Add;
+            exp->elements_.push_back(TokenType::OPERATOR_PLUS);
+            exp->elements_.push_back(parseMulExp());
+        }
+        else if (match(TokenType::OPERATOR_MINUS))
+        {
+            exp->elements_.push_back(TokenType::OPERATOR_MINUS);
+            exp->elements_.push_back(parseMulExp());
         }
         else
         {
-            op = BinaryExp::Op::Sub;
+            break;
         }
-        auto right = parseMulExp();
-        expr = std::make_unique<BinaryExp>(op, std::move(expr), std::move(right));
     }
-    return expr;
+    return exp;
 }
 
-std::unique_ptr<Exp> Parser::parseMulExp()
+std::unique_ptr<MulExp> Parser::parseMulExp()
 {
-    auto expr = parseUnaryExp();
-    while (match(TokenType::OPERATOR_MULTIPLY) || match(TokenType::OPERATOR_DIVIDE) || match(TokenType::OPERATOR_MODULO))
-    {
-        BinaryExp::Op op;
-        if (match(TokenType::OPERATOR_MULTIPLY))
-        {
-            op = BinaryExp::Op::Mul;
+    auto exp = std::make_unique<MulExp>();
+    
+    // 第一个元素必须是UnaryExp
+    exp->elements_.push_back(parseUnaryExp());
+    
+    // 后续处理运算符和操作数
+    while (true) {
+        if (match(TokenType::OPERATOR_MULTIPLY)) {
+            exp->elements_.push_back(TokenType::OPERATOR_MULTIPLY);
+            exp->elements_.push_back(parseUnaryExp());
+        } else if (match(TokenType::OPERATOR_DIVIDE)) {
+            exp->elements_.push_back(TokenType::OPERATOR_DIVIDE);
+            exp->elements_.push_back(parseUnaryExp());
+        } else if (match(TokenType::OPERATOR_MODULO)) {
+            exp->elements_.push_back(TokenType::OPERATOR_MODULO);
+            exp->elements_.push_back(parseUnaryExp());
+        } else {
+            break;
         }
-        else if (match(TokenType::OPERATOR_DIVIDE))
-        {
-            op = BinaryExp::Op::Div;
-        }
-        else
-        {
-            op = BinaryExp::Op::Mod;
-        }
-        auto right = parseUnaryExp();
-        expr = std::make_unique<BinaryExp>(op, std::move(expr), std::move(right));
     }
-    return expr;
+    return exp;
 }
 
 std::unique_ptr<Exp> Parser::parseUnaryExp()
 {
-
     auto unary_exp = std::make_unique<UnaryExp>();
     // 情况2：函数调用（Ident '(' ... ）
     if (check(TokenType::IDENTIFIER) && peek(1).tokenType_ == TokenType::PUNCTUATION_LEFT_PAREN)

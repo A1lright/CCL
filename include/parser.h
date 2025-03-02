@@ -61,8 +61,8 @@ private:
     std::unique_ptr<Exp> parseLogicalAndExp();
     std::unique_ptr<Exp> parseEqExp();
     std::unique_ptr<Exp> parseRelExp();
-    std::unique_ptr<Exp> parseAddExp();
-    std::unique_ptr<Exp> parseMulExp();
+    std::unique_ptr<AddExp> parseAddExp();
+    std::unique_ptr<MulExp> parseMulExp();
     std::unique_ptr<Exp> parseUnaryExp();
     std::unique_ptr<PrimaryExp> parsePrimaryExp();
     std::unique_ptr<LVal> parseLVal();
