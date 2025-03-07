@@ -14,20 +14,20 @@ enum SymbolType
     VARIABLE,
     CONSTANT,
     FUNCTION,
-    ARRAY
+    PARAM
 };
 
 // 基础符号类
 class Symbol
 {
 public:
-    SymbolType symbolType_;
     std::string name_;
+    SymbolType symbolType_;
     TokenType dataType_; // 从TokenType继承的类型如INTTK, VOIDTK等
     int lineDefined_;
     int columnDefined_;
 
-    Symbol(SymbolType type, const std::string &name, TokenType dtype, int line, int col);
+    Symbol()=default;
 
     virtual ~Symbol() = default;
 };
@@ -45,8 +45,7 @@ public:
         bool boolValue;
     } initValue_;
 
-    VariableSymbol(const std::string &name, TokenType dtype, bool isConst,
-                   int line = 0, int col = 0, bool isArray = false);
+    VariableSymbol()=default;
 };
 
 // 函数符号
@@ -56,8 +55,7 @@ public:
     std::vector<TokenType> paramTypes_; // 参数类型列表
     bool hasReturn_;                    // 是否包含返回值
 
-    FunctionSymbol(const std::string &name, TokenType returnType,
-                   const std::vector<TokenType> &params, int line, int col);
+    FunctionSymbol()=default;
 };
 
 // 符号表类（支持嵌套作用域）
@@ -87,7 +85,10 @@ public:
     // 函数参数检查
     bool checkFunctionArgs(const std::string &funcName,
                            const std::vector<TokenType> &argTypes);
-};
 
+    int currentScopeLevel(){
+        return scopes_.size()-1;
+    }
+};
 
 #endif

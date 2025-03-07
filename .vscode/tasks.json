@@ -11,7 +11,9 @@
                 "-I${workspaceFolder}/include",
                 "${workspaceFolder}/src/*.cpp",
                 "-o",
-                "${workspaceFolder}/build/c_compiler"
+                "${workspaceFolder}/build/c_compiler",
+
+                
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

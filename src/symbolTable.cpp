@@ -1,30 +1,14 @@
 #include "symbolTable.h"
 
-Symbol::Symbol(SymbolType type, const std::string &name, TokenType dtype, int line, int col)
-    : symbolType_(type), name_(name), dataType_(dtype), lineDefined_(line), columnDefined_(col) {}
-
-
-VariableSymbol::VariableSymbol(const std::string &name, TokenType dtype, bool isConst,
-    int line, int col, bool isArray): Symbol(isConst ? CONSTANT : VARIABLE, name, dtype, line, col),
-      isConst_(isConst), isArray_(isArray) {}
-
-  
-
-FunctionSymbol::FunctionSymbol(const std::string &name, TokenType returnType,
-                               const std::vector<TokenType> &params, int line, int col)
-    : Symbol(FUNCTION, name, returnType, line, col),
-      paramTypes_(params), hasReturn_(false) {}
 
 SymbolTable::SymbolTable()
 {
-
     // 初始化全局作用域
     enterScope();
 }
 
 void SymbolTable::enterScope()
 {
-
     scopes_.push_back(Scope());
 }
 

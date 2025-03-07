@@ -1,3 +1,9 @@
+// Created by wuhao on 2021/4/4.
+// 语法树节点类定义
+#ifndef SYSY_ASTSYSY_H
+#define SYSY_ASTSYSY_H
+#pragma once
+
 #include <memory>
 #include "lexer.h"
 #include <vector>
@@ -555,3 +561,5 @@ namespace AST
     };
 
 }
+
+#endif //SYSY_ASTSYSY_H

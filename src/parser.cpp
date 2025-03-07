@@ -611,7 +611,7 @@ std::unique_ptr<FuncType> Parser::parseFuncType()
 std::unique_ptr<BType> Parser::parseBType()
 {
     auto bType = std::make_unique<BType>();
-    bType->typeName_ = peek().value_;
+    bType->typeName_ = token_.value_;
     consume(TokenType::KEYWORD_INT, "Expect 'int'");
     return bType;
 }
