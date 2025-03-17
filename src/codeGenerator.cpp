@@ -849,61 +849,128 @@ Function *CodeGenerator::createGetintFunction(Module *module, LLVMContext &conte
     return getintFunc;
 }
 
-void CodeGenerator::emitMIPSAssembly(Module *module, const std::string &outputFilename)
+void CodeGenerator::emitMIPSAssembly(const std::string &outputFilename)
 {
-    // // 初始化 LLVM 目标信息
-    // llvm::InitializeAllTargetInfos();
-    // llvm::InitializeAllTargets();
-    // llvm::InitializeAllTargetMCs();
-    // llvm::InitializeAllAsmParsers();
-    // llvm::InitializeAllAsmPrinters();
+    // //   1. 只初始化 MIPS 相关的目标，防止 X86 依赖
+    // LLVMInitializeMipsTargetInfo();
+    // LLVMInitializeMipsTarget();
+    // LLVMInitializeMipsTargetMC();
+    // LLVMInitializeMipsAsmParser();
+    // LLVMInitializeMipsAsmPrinter();
 
-    // // 设置目标三元组
+    // //   2. 设置 MIPS 目标三元组
     // std::string targetTriple = "mips-unknown-linux-gnu";
     // std::string error;
     // const llvm::Target *target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
     // if (!target)
     // {
-    //     llvm::errs() << error;
+    //     llvm::errs() << "  无法找到 MIPS 目标: " << error << "\n";
     //     return;
     // }
 
-    // // 创建目标机器
+    // //   3. 创建 MIPS 目标机器
     // llvm::TargetOptions options;
-    // std::unique_ptr<llvm::TargetMachine> targetMachine(target->createTargetMachine(targetTriple, "mips32", "", options, llvm::Reloc::Model::PIC_));
+    // std::unique_ptr<llvm::TargetMachine> targetMachine(
+    //     target->createTargetMachine(targetTriple, "mips32", "", options, std::nullopt)); // ✅ 代替 llvm::Reloc::Model::PIC_
+
     // if (!targetMachine)
     // {
-    //     llvm::errs() << "Could not create target machine for MIPS.\n";
+    //     llvm::errs() << "  无法创建 MIPS 目标机器！\n";
     //     return;
     // }
 
-    // // 设置输出文件
+    // //   4. 确保 module_ 存在
+    // if (!module_)
+    // {
+    //     llvm::errs() << "  错误：LLVM 模块未初始化！\n";
+    //     return;
+    // }
+
+    // //   5. 设置模块的目标三元组和数据布局
+    // module_->setTargetTriple(targetTriple);
+    // module_->setDataLayout(targetMachine->createDataLayout());
+
+    // //   6. 设置输出文件
     // std::error_code ec;
-    // llvm::sys::fs::OpenFlags flags = llvm::sys::fs::OF_None;
-    // std::unique_ptr<llvm::ToolOutputFile> outputFile = std::make_unique<llvm::ToolOutputFile>(outputFilename, ec, flags);
+    // llvm::raw_fd_ostream dest(outputFilename, ec, llvm::sys::fs::OF_None);
     // if (ec)
     // {
-    //     llvm::errs() << "Error opening output file: " << ec.message() << "\n";
+    //     llvm::errs() << "  无法打开输出文件 " << outputFilename << "：" << ec.message() << "\n";
     //     return;
     // }
 
-    // // 设置模块的目标三元组和数据布局
-    // module->setTargetTriple(targetTriple);
-    // module->setDataLayout(targetMachine->createDataLayout());
-
-    // // 创建传递管理器
+    // //   7. 创建 PassManager 生成 MIPS 汇编
     // llvm::legacy::PassManager passManager;
-
-    // // 添加生成汇编代码的传递
-    // if (targetMachine->addPassesToEmitFile(passManager, outputFile->os(), nullptr, llvm::CodeGenFileType::CGFT_AssemblyFile))
+    // if (targetMachine->addPassesToEmitFile(passManager, dest, nullptr, llvm::CodeGenFileType::CGFT_AssemblyFile))
     // {
-    //     llvm::errs() << "Target machine cannot emit assembly file.\n";
+    //     llvm::errs() << "  目标机器无法生成 MIPS 汇编文件！\n";
     //     return;
     // }
 
-    // // 运行传递管理器生成汇编代码
-    // passManager.run(*module);
+    // //   8. 运行 PassManager，生成汇编代码
+    // passManager.run(*module_);
+    // dest.flush();
 
-    // // 保存输出文件
-    // outputFile->keep();
+    // llvm::outs() << "✅ MIPS 汇编代码已成功写入：" << outputFilename << "\n";
+    //   1. 只初始化 X86 目标，避免多余依赖
+    LLVMInitializeX86TargetInfo();
+    LLVMInitializeX86Target();
+    LLVMInitializeX86TargetMC();
+    LLVMInitializeX86AsmParser();
+    LLVMInitializeX86AsmPrinter();
+
+    //   2. 设置 X86 目标三元组
+    std::string targetTriple = "x86_64-pc-linux-gnu";
+    std::string error;
+    const llvm::Target *target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
+    if (!target)
+    {
+        llvm::errs() << "  无法找到 X86 目标: " << error << "\n";
+        return;
+    }
+
+    //   3. 创建 X86 目标机器
+    llvm::TargetOptions options;
+    std::unique_ptr<llvm::TargetMachine> targetMachine(
+        target->createTargetMachine(targetTriple, "x86-64", "", options, std::nullopt));
+
+    if (!targetMachine)
+    {
+        llvm::errs() << "  无法创建 X86 目标机器！\n";
+        return;
+    }
+
+    //   4. 确保 module_ 存在
+    if (!module_)
+    {
+        llvm::errs() << "  错误：LLVM 模块未初始化！\n";
+        return;
+    }
+
+    //   5. 设置模块的目标三元组和数据布局
+    module_->setTargetTriple(targetTriple);
+    module_->setDataLayout(targetMachine->createDataLayout());
+
+    //   6. 设置输出文件
+    std::error_code ec;
+    llvm::raw_fd_ostream dest(outputFilename, ec, llvm::sys::fs::OF_None);
+    if (ec)
+    {
+        llvm::errs() << "  无法打开输出文件 " << outputFilename << "：" << ec.message() << "\n";
+        return;
+    }
+
+    //   7. 创建 PassManager 生成 X86 汇编
+    llvm::legacy::PassManager passManager;
+    if (targetMachine->addPassesToEmitFile(passManager, dest, nullptr, llvm::CodeGenFileType::CGFT_AssemblyFile))
+    {
+        llvm::errs() << "  目标机器无法生成 X86 汇编文件！\n";
+        return;
+    }
+
+    //   8. 运行 PassManager，生成汇编代码
+    passManager.run(*module_);
+    dest.flush();
+
+    llvm::outs() << "✅ X86 汇编代码已成功写入：" << outputFilename << "\n";
 }

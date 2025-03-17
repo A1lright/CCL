@@ -94,7 +94,7 @@ void SymbolTable::addBuiltinFunctions()
     getintSymbol->hasReturn_ = true;
     
 
-    if (this->addSymbol(std::move(getintSymbol)))
+    if (!this->addSymbol(std::move(getintSymbol)))
     {
         // 添加失败，说明已经定义过，报告错误,可以调用错误处理函数
         std::cerr << "Error: Function 'getint' is redefined." << std::endl;
@@ -110,7 +110,7 @@ void SymbolTable::addBuiltinFunctions()
     printfSymbol->paramTypes_ = {TokenType::CONSTANT_STRING}; // 第一个参数为格式字符串
     printfSymbol->hasReturn_ = true;
 
-    if (this->addSymbol(std::move(printfSymbol)))
+    if (!this->addSymbol(std::move(printfSymbol)))
     {
         std::cerr << "Error: Function 'printf' is redefined." << std::endl;
     }

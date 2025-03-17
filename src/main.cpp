@@ -52,8 +52,9 @@ int main(int argc, char *argv[])
     // 语法树输出中间代码
     CodeGenerator codeGenerator(symbolTable);
     codeGenerator.generateCode(*program);
-
+codeGenerator.emitMIPSAssembly("/home/lin/CCl/output.s");
     codeGenerator.getModule()->print(llvm::outs(), nullptr);
+    
 
     return 0;
 }

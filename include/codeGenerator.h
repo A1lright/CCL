@@ -39,7 +39,7 @@ public:
     CodeGenerator(SymbolTable &symtab);
     ~CodeGenerator();
 
-    void emitMIPSAssembly(Module *module, const std::string &outputFilename);
+    void emitMIPSAssembly(const std::string &outputFilename);
 
     // 主入口
     void generateCode(AST::CompUnit &compUnit);
