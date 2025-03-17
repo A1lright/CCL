@@ -1,10 +1,10 @@
 #include "symbolTable.h"
 
-
 SymbolTable::SymbolTable()
 {
     // 初始化全局作用域
     enterScope();
+    addBuiltinFunctions();
 }
 
 void SymbolTable::enterScope()
@@ -14,7 +14,6 @@ void SymbolTable::enterScope()
 
 void SymbolTable::exitScope()
 {
-
     if (!scopes_.empty())
     {
         scopes_.pop_back();
@@ -77,4 +76,42 @@ bool SymbolTable::checkFunctionArgs(const std::string &funcName, const std::vect
         }
     }
     return false;
+}
+
+void SymbolTable::addBuiltinFunctions()
+{
+    // 添加 getint 函数：返回 int，无参数
+    auto getintSymbol = std::make_unique<FunctionSymbol>();
+    getintSymbol->name_ = "getint";
+    getintSymbol->symbolType_ = SymbolType::FUNCTION;
+    getintSymbol->dataType_ = TokenType::KEYWORD_INT; // 返回 int
+    getintSymbol->lineDefined_ = 0;
+    getintSymbol->columnDefined_ = 0;
+
+// 对于 getint，无参数列表，paramTypes_ 为空
+    getintSymbol->paramTypes_ = {};
+
+    getintSymbol->hasReturn_ = true;
+    
+
+    if (this->addSymbol(std::move(getintSymbol)))
+    {
+        // 添加失败，说明已经定义过，报告错误,可以调用错误处理函数
+        std::cerr << "Error: Function 'getint' is redefined." << std::endl;
+    }
+
+    // 添加 printf 函数：返回 int，参数为格式字符串和可变参数
+    auto printfSymbol = std::make_unique<FunctionSymbol>();
+    printfSymbol->name_ = "printf";
+    printfSymbol->symbolType_ = SymbolType::FUNCTION;
+    printfSymbol->dataType_ = TokenType::KEYWORD_INT; // 返回 int（按照 C 标准库 printf）
+    printfSymbol->lineDefined_ = 0;
+    printfSymbol->columnDefined_ = 0;
+    printfSymbol->paramTypes_ = {TokenType::CONSTANT_STRING}; // 第一个参数为格式字符串
+    printfSymbol->hasReturn_ = true;
+
+    if (this->addSymbol(std::move(printfSymbol)))
+    {
+        std::cerr << "Error: Function 'printf' is redefined." << std::endl;
+    }
 }

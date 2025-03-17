@@ -4,13 +4,32 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/../llvm_project_1706/build/include"
+                "${workspaceFolder}/../llvm_project_1706/build/include",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/build/CMakeFiles/CCL.dir/src"
             ],
-            "defines": [],
-            "compilerPath": "/usr/bin/gcc",
+            "defines": ["_GNU_SOURCE",
+                "__STDC_CONSTANT_MACROS",
+                "__STDC_FORMAT_MACROS",
+                "__STDC_LIMIT_MACROS"],
+            "compilerPath": "/usr/bin/g++",
             "cStandard": "c17",
             "cppStandard": "gnu++17",
-            "intelliSenseMode": "linux-gcc-x64"
+            "intelliSenseMode": "linux-gcc-x64",
+            "compilerArgs": [ "-fexceptions",
+            "-fno-rtti",
+            "-g",
+            "-I/home/lin/llvm_project_1706/llvm_install_dir/include",
+            "-I${workspaceFolder}/include"],
+            "mergeConfigurations": false,
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/**"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "configurationProvider": "ms-vscode.cmake-tools",
+            //"compileCommands": "${config:cmake.buildDirectory}/compile_commands.json"
         }
     ],
     "version": 4

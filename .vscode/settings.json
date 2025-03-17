@@ -55,6 +55,8 @@
         "iomanip": "cpp",
         "sstream": "cpp",
         "variant": "cpp",
-        "optional": "cpp"
+        "optional": "cpp",
+        "cstring": "cpp",
+        "cinttypes": "cpp"
     }
 }

@@ -5,23 +5,11 @@
 #include "SyntaxOutputVisitor.hpp"
 #include "symbolTable.h"
 #include "SymbolTypeBuilder.h"
+#include "codeGenerator.h"
 
-
-int main(int argc, char *argv[])
+// 从文件中读取源代码
+std::string getFile(std::string filePath)
 {
-
-    // 检查命令行参数数量，确保至少有一个文件名参数
-    if (argc < 2)
-    {
-        std::cerr << "请提供文件名作为命令行参数。" << std::endl;
-        return 1;
-    }
-
-    // 获取文件名并转换为 std::string 类型
-    std::string fileName = argv[1];
-
-    std::string filePath(fileName);
-
     std::ifstream file(filePath);
     if (!file.is_open())
     {
@@ -30,24 +18,42 @@ int main(int argc, char *argv[])
     // 使用迭代器读取文件内容
     std::string sourceCode((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     file.close();
+    return sourceCode;
+}
 
-    Lexer lexer(sourceCode);
-    lexer.tokenize();
-    std::vector<Token> tokenVector = lexer.getTokens();
-    for (Token token : tokenVector)
+int main(int argc, char *argv[])
+{
+    // 检查命令行参数数量，确保至少有一个文件名参数
+    if (argc < 2)
     {
-        std::cout << token.tokenTypeToString(token.tokenType_) << " " << token.value_ << std::endl;
+        std::cerr << "请提供文件名作为命令行参数。" << std::endl;
+        return 1;
     }
 
-    Parser parser(tokenVector);
-    std::unique_ptr<AST::CompUnit> program = parser.parseCompUnit();
+    // 获取文件名并转换为 std::string 类型
+    std::string filePath = argv[1];
+    std::string sourceCode = getFile(filePath);
 
+    // 初始化符号表和错误管理器
     SymbolTable symbolTable;
-    std::vector<std::string> errors;
-    SymbolManager symbolManager(symbolTable, errors);
-    program->accept(symbolManager);
+    ErrorManager &errorManager = ErrorManager::getInstance();
 
-    
+    // 词法分析
+    Lexer lexer(sourceCode);
+    lexer.tokenize();
+    //lexer.printTokens();
+    std::vector<Token> tokenVector = lexer.getTokens();
+
+    // 语法分析
+    Parser parser(tokenVector, symbolTable);
+    std::unique_ptr<AST::CompUnit> program = parser.parseCompUnit();
+    // program->accept(symbolManager);
+
+    // 语法树输出中间代码
+    CodeGenerator codeGenerator(symbolTable);
+    codeGenerator.generateCode(*program);
+
+    codeGenerator.getModule()->print(llvm::outs(), nullptr);
 
     return 0;
 }

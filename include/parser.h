@@ -7,16 +7,18 @@
 #include <memory>
 #include <stdexcept>
 #include "symbolTable.h"
+#include "ErrorManager.h"
 using namespace AST;
 
 class Parser
 {
 public:
-    explicit Parser(std::vector<Token> &tokens);
+    explicit Parser(std::vector<Token> &tokens,SymbolTable&symbolTable);
     // 编译单元解析
     std::unique_ptr<CompUnit> parseCompUnit();
 
 private:
+    SymbolTable &symbolTable_;
     std::vector<Token> &tokens_;
     size_t current_;
     Token token_;

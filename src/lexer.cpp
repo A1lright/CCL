@@ -224,6 +224,14 @@ std::vector<Token> Lexer::getTokens()
     return tokens_;
 }
 
+void Lexer::printTokens()
+{
+    for (const auto &token : tokens_)
+    {
+        std::cout << token;
+    }
+}
+
 Token Lexer::getNextToken()
 {
 

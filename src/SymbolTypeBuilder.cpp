@@ -209,11 +209,11 @@ void SymbolManager::visit(LVal &node)
         return;
     }
 
-    if (auto varSym = dynamic_cast<VariableSymbol*>(sym)) {
-        if (varSym->isArray_ && node.indices_.size() != varSym->dimensions_.size()) {
-            errors_.push_back("数组 '" + node.name_ + "' 索引数量不匹配");
-        }
-    }
+    // if (auto varSym = dynamic_cast<VariableSymbol*>(sym)) {
+    //     if (varSym->isArray_ && node.indices_.size() != varSym->dimensions_.size()) {
+    //         errors_.push_back("数组 '" + node.name_ + "' 索引数量不匹配");
+    //     }
+    // }
 }
 
 void SymbolManager::visit(PrimaryExp &node)

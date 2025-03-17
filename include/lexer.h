@@ -140,6 +140,8 @@ public:
     void tokenize(); // 扫描文本，序列化token，调用gettoken
     std::vector<Token> getTokens();
 
+    void printTokens();
+
 private:
     std::string sourceCode_; // 源代码
     size_t currentPosition_; // 当前读取位置
