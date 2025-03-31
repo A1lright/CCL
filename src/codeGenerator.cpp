@@ -266,7 +266,7 @@ void CodeGenerator::visit(ConstInitVal &node)
 {
     if (std::holds_alternative<std::unique_ptr<Exp>>(node.value_))
     {
-        std::get<std::unique_ptr<Exp>>(node.value_)->accept(*this);
+        std::move(std::get<std::unique_ptr<Exp>>(node.value_))->accept(*this);
     }
     else
     {

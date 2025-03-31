@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SYNTAXOUTPUTVISITOR_HPP
+#define SYNTAXOUTPUTVISITOR_HPP
 #include "parser.h"
 #include <iostream>
 #include <memory>
@@ -509,3 +510,5 @@ private:
         }
     }
 };
+
+#endif // SYNTAXOUTPUTVISITOR_HPP

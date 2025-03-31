@@ -1,32 +1,37 @@
 [
 {
   "directory": "/home/lin/CCl/build",
-  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/main.cpp.o -c /home/lin/CCl/src/main.cpp",
+  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/main.cpp.o -c /home/lin/CCl/src/main.cpp",
   "file": "/home/lin/CCl/src/main.cpp"
 },
 {
   "directory": "/home/lin/CCl/build",
-  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/lexer.cpp.o -c /home/lin/CCl/src/lexer.cpp",
+  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/lexer.cpp.o -c /home/lin/CCl/src/lexer.cpp",
   "file": "/home/lin/CCl/src/lexer.cpp"
 },
 {
   "directory": "/home/lin/CCl/build",
-  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/parser.cpp.o -c /home/lin/CCl/src/parser.cpp",
+  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/parser.cpp.o -c /home/lin/CCl/src/parser.cpp",
   "file": "/home/lin/CCl/src/parser.cpp"
 },
 {
   "directory": "/home/lin/CCl/build",
-  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/codeGenerator.cpp.o -c /home/lin/CCl/src/codeGenerator.cpp",
+  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/codeGenerator.cpp.o -c /home/lin/CCl/src/codeGenerator.cpp",
   "file": "/home/lin/CCl/src/codeGenerator.cpp"
 },
 {
   "directory": "/home/lin/CCl/build",
-  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/symbolTable.cpp.o -c /home/lin/CCl/src/symbolTable.cpp",
+  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/symbolTable.cpp.o -c /home/lin/CCl/src/symbolTable.cpp",
   "file": "/home/lin/CCl/src/symbolTable.cpp"
 },
 {
   "directory": "/home/lin/CCl/build",
-  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/SymbolTypeBuilder.cpp.o -c /home/lin/CCl/src/SymbolTypeBuilder.cpp",
+  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/SymbolTypeBuilder.cpp.o -c /home/lin/CCl/src/SymbolTypeBuilder.cpp",
   "file": "/home/lin/CCl/src/SymbolTypeBuilder.cpp"
+},
+{
+  "directory": "/home/lin/CCl/build",
+  "command": "/usr/bin/c++ -DGTEST_HAS_RTTI=0 -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include  -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions -o CMakeFiles/CCL.dir/src/SemanticAnalyzer.cpp.o -c /home/lin/CCl/src/SemanticAnalyzer.cpp",
+  "file": "/home/lin/CCl/src/SemanticAnalyzer.cpp"
 }
 ]

@@ -28,6 +28,8 @@ bool SymbolTable::addSymbol(std::unique_ptr<Symbol> symbol)
     auto &current = scopes_.back();
     if (current.find(symbol->name_) != current.end())
     {
+        
+        ErrorManager::getInstance().addError(ErrorLevel::ERROR,'b',symbol->lineDefined_,"Symbol '" + symbol->name_ + "' is redefined.",ErrorType::SyntaxError);
         return false; // 重复定义
     }
 

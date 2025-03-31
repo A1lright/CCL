@@ -9,7 +9,9 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/CCL",
-            "args": ["${workspaceFolder}/examples/simple.c"],
+            "args": [
+                "${workspaceFolder}/test/test_simple.c"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -27,9 +29,18 @@
                     "description": "将反汇编风格设置为 Intel",
                     "text": "-gdb-set disassembly-flavor intel",
                     "ignoreFailures": true
+                },
+                {
+                    "description": "设置调试信息显示格式",
+                    "text": "-gdb-set print pretty on",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "启用调试符号搜索路径",
+                    "text": "-gdb-set debug-file-directory ${workspaceFolder}/build",
+                    "ignoreFailures": true
                 }
             ]
         }
-
     ]
 }

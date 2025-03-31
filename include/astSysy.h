@@ -1,9 +1,8 @@
-// Created by wuhao on 2021/4/4.
 // 语法树节点类定义
 #ifndef SYSY_ASTSYSY_H
 #define SYSY_ASTSYSY_H
-#pragma once
 
+#pragma once
 #include <memory>
 #include "lexer.h"
 #include <vector>
@@ -96,9 +95,13 @@ namespace AST
         virtual void visit(ConstDecl &) = 0;
         virtual void visit(VarDef &) = 0;
         virtual void visit(VarDecl &) = 0;
+        virtual void visit(BType &) = 0;
+        virtual void visit(InitVal &) = 0;
+        virtual void visit(ConstInitVal &) = 0;
 
         // 语句
         virtual void visit(Block &) = 0;
+        virtual void visit(BlockItem &) = 0;
         virtual void visit(AssignStmt &) = 0;
         virtual void visit(IfStmt &) = 0;
         virtual void visit(WhileStmt &) = 0;
@@ -106,9 +109,9 @@ namespace AST
         virtual void visit(IOStmt &) = 0;
 
         // 表达式
+        virtual void visit(Number &) = 0;
         virtual void visit(LVal &) = 0;
         virtual void visit(PrimaryExp &) = 0;
-        // virtual void visit(BinaryExp &) = 0;
         virtual void visit(UnaryExp &) = 0;
         virtual void visit(AddExp &) = 0;
         virtual void visit(MulExp &) = 0;
@@ -119,16 +122,9 @@ namespace AST
         virtual void visit(RelExp &) = 0;
 
         virtual void visit(CallExp &) = 0;
-        virtual void visit(Number &) = 0;
-
         virtual void visit(FuncParam &) = 0;
         virtual void visit(FuncDef &) = 0;
         virtual void visit(MainFuncDef &) = 0;
-
-        virtual void visit(BType &) = 0;
-        virtual void visit(InitVal &) = 0;
-        virtual void visit(ConstInitVal &) = 0;
-        virtual void visit(BlockItem &) = 0;
     };
 
     class CompUnit : public Node
@@ -165,6 +161,7 @@ namespace AST
         std::string name_;
         std::vector<std::unique_ptr<Exp>> dimensions_;
         std::unique_ptr<ConstInitVal> initVal_;
+        bool hasInit = false;
 
         void accept(Visitor &v) override
         {
@@ -396,45 +393,13 @@ namespace AST
         }
     };
 
-    // // 二元运算表达式
-    // class BinaryExp : public Exp
-    // {
-    // public:
-    //     enum class Op
-    //     {
-    //         Add,
-    //         Sub,
-    //         Mul,
-    //         Div,
-    //         Mod,
-    //         Lt,
-    //         Le,
-    //         Gt,
-    //         Ge,
-    //         Eq,
-    //         Neq,
-    //         And,
-    //         Or
-    //     };
-    //     BinaryExp(Op &op, std::unique_ptr<Exp> left, std::unique_ptr<Exp> right)
-    //         : op(op), left_(std::move(left)), right_(std::move(right)) {}
-    //     Op op;
-    //     std::unique_ptr<Exp> left_;
-    //     std::unique_ptr<Exp> right_;
-
-    //     void accept(Visitor &v) override
-    //     {
-    //         v.visit(*this);
-    //     }
-    // };
-
     // 加法表达式层（对应 + - 运算）
     class AddExp : public Exp
     {
     public:
         std::vector<std::variant<
             std::unique_ptr<Exp>, // 操作数
-            TokenType                // 运算符（PLUS/MINUS）
+            TokenType             // 运算符（PLUS/MINUS）
             >>
             elements_;
 
@@ -562,4 +527,4 @@ namespace AST
 
 }
 
-#endif //SYSY_ASTSYSY_H
+#endif // SYSY_ASTSYSY_H

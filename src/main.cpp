@@ -1,11 +1,12 @@
-#include <iostream>
 #include "lexer.h"
-#include <fstream>
 #include "parser.h"
-#include "SyntaxOutputVisitor.hpp"
 #include "symbolTable.h"
 #include "SymbolTypeBuilder.h"
 #include "codeGenerator.h"
+#include "SemanticAnalyzer.h"
+#include "SyntaxOutputVisitor.hpp"
+#include <iostream>
+#include <fstream>
 
 // 从文件中读取源代码
 std::string getFile(std::string filePath)
@@ -41,20 +42,28 @@ int main(int argc, char *argv[])
     // 词法分析
     Lexer lexer(sourceCode);
     lexer.tokenize();
-    //lexer.printTokens();
+    lexer.printTokens();
     std::vector<Token> tokenVector = lexer.getTokens();
 
     // 语法分析
     Parser parser(tokenVector, symbolTable);
     std::unique_ptr<AST::CompUnit> program = parser.parseCompUnit();
+    SyntaxOutputVisitor syntaxcout;
+    program->accept(syntaxcout);
     // program->accept(symbolManager);
+
+    //语义分析
+    SemanticAnalyzer semanticAnalyzer(symbolTable);
+    program->accept(semanticAnalyzer);
 
     // 语法树输出中间代码
     CodeGenerator codeGenerator(symbolTable);
     codeGenerator.generateCode(*program);
-codeGenerator.emitMIPSAssembly("/home/lin/CCl/output.s");
+    codeGenerator.emitMIPSAssembly("/home/lin/CCl/output.s");
     codeGenerator.getModule()->print(llvm::outs(), nullptr);
-    
+
+    // 输出错误信息
+    errorManager.reportErrors();
 
     return 0;
 }

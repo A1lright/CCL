@@ -1,4 +1,11 @@
 // 测试多种声明组合
-const int a = 5, b = 3+2;
-int x, y = 7;
-int arr1[10], arr2[2][3] = {{1}};
+
+int a,b=5;
+const int c=5+3;
+int main()
+{
+    int a = 1;
+    int a = 2;
+    int b;
+    const int c=3;
+}

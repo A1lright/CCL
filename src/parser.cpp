@@ -41,18 +41,39 @@ std::unique_ptr<Decl> Parser::parseDecl()
 std::unique_ptr<ConstDecl> Parser::parseConstDecl()
 {
     auto const_decl = std::make_unique<ConstDecl>();
-    consume(TokenType::KEYWORD_CONST, "Expect 'const'");
 
+    //consume(TokenType::KEYWORD_CONST, "Expect 'const'");
+
+    advance();
     // 解析BType（目前只有int）
     const_decl->bType_ = parseBType();
 
     // 解析多个ConstDef，逗号分隔
     do
     {
-        const_decl->constDefs_.push_back(parseConstDef());
+        auto const_def = parseConstDef();
+        // 创建变量符号对象
+        auto var_symbol = std::make_unique<VariableSymbol>();
+        var_symbol->name_ = const_def->name_;
+        var_symbol->symbolType_ = SymbolType::VARIABLE;
+        var_symbol->dataType_ = TokenType::KEYWORD_INT;
+        var_symbol->lineDefined_ = token_.line_;
+        var_symbol->columnDefined_ = 0;
+        var_symbol->isConst_ = true;
+        var_symbol->isArray_ = const_def->dimensions_.size() > 0;
+        var_symbol->dimensions_ = std::vector<int>(); /* TODO: 填充数组维度信息 */
+        var_symbol->initValue_.intValue = const_def->hasInit ? value_ : 0;
+
+        // 将符号插入符号表
+        if (!symbolTable_.addSymbol(std::move(var_symbol)))
+        {
+        }
+
+        const_decl->constDefs_.push_back(std::move(const_def));
     } while (match(TokenType::PUNCTUATION_COMMA));
 
-    consume(TokenType::PUNCTUATION_SEMICOLON, "Expect ';' after const declaration");
+    //consume(TokenType::PUNCTUATION_SEMICOLON, "Expect ';' after const declaration");
+    advance();
 
     return const_decl;
 }
@@ -60,19 +81,22 @@ std::unique_ptr<ConstDecl> Parser::parseConstDecl()
 std::unique_ptr<ConstDef> Parser::parseConstDef()
 {
     auto const_def = std::make_unique<ConstDef>();
-    const_def->name_ = consume(TokenType::IDENTIFIER, "Expect identifier").value_;
+    const_def->name_ = advance().value_;
 
     // 解析数组维度 [ConstExp]
     while (match(TokenType::PUNCTUATION_LEFT_BRACKET))
     {
         const_def->dimensions_.push_back(parseConstExp());
-        consume(TokenType::PUNCTUATION_RIGHT_BRACKET, "Expect ']' after dimension");
+        advance();
     }
 
     // 解析初始化值
-    consume(TokenType::OPERATOR_ASSIGN, "Expect '=' in const definition");
+    advance();
 
     const_def->initVal_ = parseConstInitVal();
+
+    const_def->hasInit = true; // hasInit为多余的,必有初始化值
+
     return const_def;
 }
 
@@ -96,6 +120,7 @@ std::unique_ptr<VarDecl> Parser::parseVarDecl()
         var_symbol->isConst_ = false;
         var_symbol->isArray_ = !var_def->constExps_.empty();
         var_symbol->dimensions_ = std::vector<int>(); /* TODO: 填充数组维度信息 */
+        var_symbol->initValue_.intValue = var_def->hasInit ? value_ : 0;
 
         // 将符号插入符号表
         if (!symbolTable_.addSymbol(std::move(var_symbol)))
@@ -105,7 +130,7 @@ std::unique_ptr<VarDecl> Parser::parseVarDecl()
         var_decl->varDefs_.push_back(std::move(var_def));
     } while (match(TokenType::PUNCTUATION_COMMA));
 
-    consume(TokenType::PUNCTUATION_SEMICOLON, "Expect ';' after variable declaration"); // 必须分号结尾
+    advance(); // 必须分号结尾
 
     return var_decl;
 }
@@ -114,13 +139,13 @@ std::unique_ptr<VarDef> Parser::parseVarDef()
 {
     auto var_def = std::make_unique<VarDef>();
     // 解析标识符
-    var_def->name_ = consume(TokenType::IDENTIFIER, "Expect identifier").value_;
+    var_def->name_ = advance().value_;
 
     // 解析数组维度[ConstExp]
     while (match(TokenType::PUNCTUATION_LEFT_BRACKET))
     {
         var_def->constExps_.push_back(parseConstExp());
-        consume(TokenType::PUNCTUATION_RIGHT_BRACKET, "Expect ']' after array dimension");
+        advance();
     }
 
     // 解析可选的初始化值
@@ -145,10 +170,10 @@ std::unique_ptr<FuncDef> Parser::parseFuncDef()
     func_def->returnType_ = parseFuncType();
 
     // 解析函数名
-    func_def->name_ = consume(TokenType::IDENTIFIER, "Expect function name").value_;
+    func_def->name_ = advance().value_;
 
     // 解析形参列表
-    consume(TokenType::PUNCTUATION_LEFT_PAREN, "Expect '(' after function name");
+    advance();
     std::vector<TokenType> paramTypes;
     if (!check(TokenType::PUNCTUATION_RIGHT_PAREN))
     {
@@ -176,7 +201,7 @@ std::unique_ptr<FuncDef> Parser::parseFuncDef()
             func_def->params_.push_back(std::move(param));
         } while (match(TokenType::PUNCTUATION_COMMA));
     }
-    consume(TokenType::PUNCTUATION_RIGHT_PAREN, "Expect ')' after parameters");
+    advance();
 
     // 创建函数符号对象并添加到全局符号表
     auto funcSymbol = std::make_unique<FunctionSymbol>();
@@ -200,11 +225,10 @@ std::unique_ptr<FuncDef> Parser::parseFuncDef()
 std::unique_ptr<MainFuncDef> Parser::parseMainFuncDef()
 {
     auto main_func_def = std::make_unique<MainFuncDef>();
-    consume(TokenType::KEYWORD_INT, "expect int");
     advance();
-    consume(TokenType::KEYWORD_MAIN, "expect 'main' after 'int'");
-    consume(TokenType::PUNCTUATION_LEFT_PAREN, "expect '(' after 'main'");
-    consume(TokenType::PUNCTUATION_RIGHT_PAREN, "expect ')' after '('");
+    advance();
+    advance();
+    advance();
 
     // 将 main 函数符号添加到全局符号表
     // 创建一个函数符号对象，用于表示 main 函数
@@ -231,7 +255,7 @@ std::unique_ptr<FuncParam> Parser::parseFuncParam()
 {
     auto param = std::make_unique<FuncParam>();
     param->bType_ = parseBType();
-    param->name_ = consume(TokenType::IDENTIFIER, "Expect parameter name").value_;
+    param->name_ = advance().value_;
 
     // 处理数组类型（如 int a[] 或 int a[2][3]）
     while (match(TokenType::PUNCTUATION_LEFT_BRACKET))
@@ -243,7 +267,7 @@ std::unique_ptr<FuncParam> Parser::parseFuncParam()
         else
         {
             param->dimSizes_.push_back(parseConstExp());
-            consume(TokenType::PUNCTUATION_RIGHT_BRACKET, "Expect ']' after array size");
+            advance();
         }
     }
     return param;
@@ -307,11 +331,11 @@ std::unique_ptr<Stmt> Parser::parseStmt()
     {
         return parseReturnStmt();
     }
-    else if (check(TokenType::IDENTIFIER) && peek().tokenType_ == TokenType::OPERATOR_ASSIGN && peek(1).tokenType_ == TokenType::KEYWORD_GETINT)
+    else if (check(TokenType::IDENTIFIER) && peek(1).tokenType_ == TokenType::OPERATOR_ASSIGN && peek(2).tokenType_ == TokenType::KEYWORD_GETINT)
     {
         return parseGetintStmt();
     }
-    else if (check(TokenType::IDENTIFIER) && peek().tokenType_ == TokenType::OPERATOR_ASSIGN) //?????
+    else if (check(TokenType::IDENTIFIER) && peek(1).tokenType_ == TokenType::OPERATOR_ASSIGN) //?????
     {
         return parseAssignStmt();
     }
@@ -328,9 +352,9 @@ std::unique_ptr<Stmt> Parser::parseStmt()
 std::unique_ptr<IfStmt> Parser::parseIfStmt()
 {
     auto if_stmt = std::make_unique<IfStmt>();
-    consume(TokenType::PUNCTUATION_LEFT_PAREN, "Expect '(' after 'if'");
+    advance();
     if_stmt->cond_ = parseExp();
-    consume(TokenType::PUNCTUATION_RIGHT_PAREN, "Expect ')' after condition");
+    advance();
     if_stmt->elseBranch_ = parseStmt();
 
     if (match(TokenType::KEYWORD_ELSE))
@@ -343,9 +367,9 @@ std::unique_ptr<IfStmt> Parser::parseIfStmt()
 std::unique_ptr<WhileStmt> Parser::parseWhileStmt()
 {
     auto while_stmt = std::make_unique<WhileStmt>();
-    consume(TokenType::PUNCTUATION_LEFT_PAREN, "Expect '(' after 'while'");
+    advance();
     while_stmt->cond_ = parseExp();
-    consume(TokenType::PUNCTUATION_RIGHT_PAREN, "Expect ')' after condition");
+    advance();
     while_stmt->body_ = parseStmt();
     return while_stmt;
 }
@@ -354,8 +378,17 @@ std::unique_ptr<ReturnStmt> Parser::parseReturnStmt()
 {
     auto return_stmt = std::make_unique<ReturnStmt>();
 
-    return_stmt->exp_ = parseExp();
-
+    // 如果下一个 token 是分号，则说明没有返回值
+    if (check(TokenType::PUNCTUATION_SEMICOLON))
+    {
+        return_stmt->exp_ = nullptr;
+    }
+    else
+    {
+        // 否则解析返回表达式
+        return_stmt->exp_ = parseExp();
+    }
+    // 消费分号
     advance();
     return return_stmt;
 }
@@ -364,9 +397,9 @@ std::unique_ptr<AssignStmt> Parser::parseAssignStmt()
 {
     auto assignment = std::make_unique<AssignStmt>();
     assignment->lval_ = parseLVal();
-    consume(TokenType::OPERATOR_ASSIGN, "expect '='");
+    advance();
     assignment->exp_ = parseExp();
-    consume(TokenType::PUNCTUATION_SEMICOLON, "expect ';'");
+    advance();
     return assignment;
 }
 
@@ -560,7 +593,7 @@ std::unique_ptr<PrimaryExp> Parser::parsePrimaryExp()
     auto primary_exp = std::make_unique<PrimaryExp>();
     if (check(TokenType::PUNCTUATION_LEFT_PAREN))
     {
-        consume(TokenType::PUNCTUATION_LEFT_PAREN, "expect '(' before Exp");
+        advance();
         primary_exp->operand_ = parseExp();
     }
 
@@ -596,19 +629,6 @@ void Parser::synchronize()
     }
 }
 
-Token Parser::consume(TokenType type, const std::string &err_msg)
-{
-    if (token_.tokenType_ == type)
-    {
-        Token token = token_;
-        advance();
-        return token;
-    }
-    // throw ParseError(peek().line_, err_msg);
-    synchronize();
-    return Token(TokenType::END_OF_FILE, "", 0, 0);
-}
-
 std::unique_ptr<LVal> Parser::parseLVal()
 {
     auto lVal = std::make_unique<LVal>();
@@ -618,21 +638,18 @@ std::unique_ptr<LVal> Parser::parseLVal()
     Symbol *sym = symbolTable_.lookup(lVal->name_);
     if (!sym)
     {
-        // 如果查找不到，报告未定义错误
-        //reportError("Undefined identifier: " + lVal->name_, token_.line_, token_.column_);
         
     }
     else
     {
-        // 如果找到，可以将符号信息保存到 LVal（例如保存数据类型或符号指针，便于后续代码生成）
-        // lVal->symbol_ = sym; // 如果你的 LVal 定义中有这样的字段
-    }
 
+    }
     advance();
+    //advance();
     while (match(TokenType::PUNCTUATION_LEFT_BRACKET))
     {
         lVal->indices_.push_back(parseExp());
-        consume(TokenType::PUNCTUATION_RIGHT_BRACKET, "expect ']' after '['");
+        advance();
     }
     return lVal;
 }
@@ -641,6 +658,8 @@ std::unique_ptr<Number> Parser::parseNumber()
 {
     auto num = std::make_unique<Number>();
     num->value_ = std::stoi(token_.value_);
+    value_ = num->value_;
+    advance();
     return num;
 }
 
@@ -657,7 +676,7 @@ std::unique_ptr<ConstInitVal> Parser::parseConstInitVal()
                 elements.push_back(parseConstInitVal());
             } while (match(TokenType::PUNCTUATION_COMMA));
         }
-        consume(TokenType::PUNCTUATION_RIGHT_BRACE, "Expect '}' after initializer list");
+        advance();
         init_val->value_ = std::move(elements);
     }
     else
@@ -679,7 +698,7 @@ std::unique_ptr<InitVal> Parser::parseInitVal()
     }
 
     // 情况2：初始化值为数组初始化列表（{ ... }）
-    consume(TokenType::PUNCTUATION_LEFT_BRACE, "Expect '{' to start initializer list");
+    advance();
 
     std::vector<std::unique_ptr<InitVal>> elements;
 
@@ -698,7 +717,7 @@ std::unique_ptr<InitVal> Parser::parseInitVal()
         }
     }
 
-    consume(TokenType::PUNCTUATION_RIGHT_BRACE, "Expect '}' to close initializer list");
+    advance();
     init_val->value_ = std::move(elements); // 保存嵌套的初始化列表
     return init_val;
 }
@@ -712,10 +731,9 @@ std::unique_ptr<FuncType> Parser::parseFuncType()
 }
 
 std::unique_ptr<BType> Parser::parseBType()
-{
+{ 
     auto bType = std::make_unique<BType>();
-    bType->typeName_ = token_.value_;
-    consume(TokenType::KEYWORD_INT, "Expect 'int'");
+    bType->typeName_ = advance().value_;
     return bType;
 }
 
@@ -732,16 +750,16 @@ std::unique_ptr<Stmt> Parser::parseExprStmt()
 std::unique_ptr<CallExp> Parser::parseCallExp()
 {
     auto call_exp = std::make_unique<CallExp>();
-    call_exp->funcName = consume(TokenType::IDENTIFIER, "Expect function name").value_;
+    call_exp->funcName = advance().value_;
 
-    //在符号表中查找函数
+    // 在符号表中查找函数
     Symbol *funcSym = symbolTable_.lookup(call_exp->funcName);
-    if(!funcSym||funcSym->symbolType_!=SymbolType::FUNCTION){
-        //报告错误
+    if (!funcSym || funcSym->symbolType_ != SymbolType::FUNCTION)
+    {
+        // 报告错误
     }
 
-
-    consume(TokenType::PUNCTUATION_LEFT_PAREN, "Expect '(' after function name");
+    advance();
 
     // 解析参数列表（可能为空）
     if (!check(TokenType::PUNCTUATION_RIGHT_PAREN))
@@ -752,7 +770,7 @@ std::unique_ptr<CallExp> Parser::parseCallExp()
         } while (match(TokenType::PUNCTUATION_COMMA));
     }
 
-    consume(TokenType::PUNCTUATION_RIGHT_PAREN, "Expect ')' after function arguments");
+    advance();
     return call_exp;
 }
 
@@ -770,8 +788,8 @@ std::unique_ptr<IOStmt> Parser::parsePrintfStmt()
 {
     auto stmt = std::make_unique<IOStmt>();
     stmt->kind = IOStmt::IOKind::Printf;
-    consume(TokenType::KEYWORD_PRINTF, "");
-    consume(TokenType::PUNCTUATION_LEFT_PAREN, "Expect '(' after printf");
+    advance();
+    advance();
 
     // 解析格式字符串
     if (!check(TokenType::CONSTANT_STRING))
@@ -790,8 +808,8 @@ std::unique_ptr<IOStmt> Parser::parsePrintfStmt()
         } while (match(TokenType::PUNCTUATION_COMMA));
     }
 
-    consume(TokenType::PUNCTUATION_RIGHT_PAREN, "Expect ')' after printf args");
-    consume(TokenType::PUNCTUATION_SEMICOLON, "Expect ';' after printf");
+    advance();
+    advance();
     return stmt;
 }
 
@@ -800,11 +818,11 @@ std::unique_ptr<IOStmt> Parser::parseGetintStmt()
     auto stmt = std::make_unique<IOStmt>();
     stmt->kind = IOStmt::IOKind::Getint;
     stmt->target_ = parseLVal();
-    consume(TokenType::OPERATOR_ASSIGN, "Expect =");
-    consume(TokenType::KEYWORD_GETINT, "Expect getint");
-    consume(TokenType::PUNCTUATION_LEFT_PAREN, "Expect (");
-    consume(TokenType::PUNCTUATION_RIGHT_PAREN, "Expect )");
-    consume(TokenType::PUNCTUATION_SEMICOLON, "Expect ;");
+    advance();
+    advance();
+    advance();
+    advance();
+    advance();
     return stmt;
 }
 
@@ -817,17 +835,19 @@ Token Parser::peek(size_t ahead) const
     return tokens_[current_ + ahead];
 }
 
-void Parser::advance()
+Token Parser::advance()
 {
-
+    Token token;
     if (current_ < tokens_.size())
     {
-        token_ = tokens_[current_++];
+        token=tokens_[current_++];
+        token_ = tokens_[current_];
     }
     else
     {
         token_ = Token(TokenType::END_OF_FILE, "", 0, 0);
     }
+    return token;
 }
 
 bool Parser::match(TokenType type)

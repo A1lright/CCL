@@ -23,12 +23,14 @@ private:
     size_t current_;
     Token token_;
 
+    int value_;
+
     // =======辅助方法====================================================================
     Token peek(size_t ahead = 0) const;
-    void advance();
+    Token advance();
     bool match(TokenType type);
     bool check(TokenType type) const;
-    Token consume(TokenType type, const std::string &err_msg);
+   // Token consume(TokenType type, const std::string &err_msg);
 
     // 恢复错误：同步到下一个声明或语句边界
     void synchronize();

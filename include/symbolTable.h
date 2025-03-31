@@ -7,7 +7,9 @@
 #include <memory>
 #include "lexer.h"
 #include "llvm/IR/Value.h"
-#pragma once
+#include "ErrorManager.h"
+
+class SymbolTable;
 
 // 符号类型分类
 enum SymbolType
@@ -15,7 +17,8 @@ enum SymbolType
     VARIABLE, // 变量
     CONSTANT, // 常量
     FUNCTION, // 函数
-    PARAM     // 函数参数
+    PARAM,    // 函数参数
+    ARRAY     // 数组
 };
 
 // 基础符号类
@@ -51,12 +54,28 @@ public:
     VariableSymbol() = default;
 };
 
+// 数组符号
+class ArraySymbol : public Symbol
+{
+public:
+    bool isConst_;
+    std::vector<int> dimensions_; // 数组的维度
+    std::vector<int> initValues_; // 数组初始化值
+
+    llvm::Value *allocaInst_;     // 数组对应的内存地址
+
+    ArraySymbol() = default;
+};
+
 // 函数符号
 class FunctionSymbol : public Symbol
 {
 public:
     std::vector<TokenType> paramTypes_; // 参数类型列表
     bool hasReturn_;                    // 是否包含返回值
+
+    //TODO通过指针实现嵌套作用域的实现
+    std::unique_ptr<SymbolTable> funcTable_;
 
     FunctionSymbol() = default;
 };

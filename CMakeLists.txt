@@ -27,6 +27,7 @@ include_directories(/home/lin/CCl/include)
 string(REPLACE "-fno-exceptions" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
 
+
 # 🔥 关键修改 3：移除 X86，添加 MIPS 组件
 set(LLVM_LINK_COMPONENTS 
 Support 
@@ -53,6 +54,7 @@ add_llvm_executable(${PROJECT_NAME}
     ./src/codeGenerator.cpp
     ./src/symbolTable.cpp
     ./src/SymbolTypeBuilder.cpp
+    ./src/SemanticAnalyzer.cpp
 )
 
 # 为目标可执行文件明确指定编译选项
@@ -66,6 +68,9 @@ if(current_flags)
 else()
     set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fexceptions")
 endif()
+
+# 删除原有的 -fno-rtti 标志
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")  # 显式启用 RTTI
 
 # 🔥 关键修改 4：正确链接 LLVM 组件
 llvm_config(${PROJECT_NAME} ${LLVM_LINK_COMPONENTS})

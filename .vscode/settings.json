@@ -57,6 +57,15 @@
         "variant": "cpp",
         "optional": "cpp",
         "cstring": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "stack": "cpp",
+        "bitset": "cpp",
+        "condition_variable": "cpp",
+        "set": "cpp",
+        "mutex": "cpp",
+        "semaphore": "cpp",
+        "shared_mutex": "cpp",
+        "stop_token": "cpp",
+        "thread": "cpp"
     }
 }

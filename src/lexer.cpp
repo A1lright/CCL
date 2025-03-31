@@ -580,7 +580,7 @@ bool Lexer::isOperator(char c)
 
 bool Lexer::isSymbol(char c)
 {
-    static const std::string symbols = "{}();,";
+    static const std::string symbols = "{}();,[]";
     return symbols.find(c) != std::string::npos;
 }
 
