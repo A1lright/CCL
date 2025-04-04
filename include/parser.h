@@ -13,7 +13,7 @@ using namespace AST;
 class Parser
 {
 public:
-    explicit Parser(std::vector<Token> &tokens,SymbolTable&symbolTable);
+    explicit Parser(std::vector<Token> &tokens, SymbolTable &symbolTable);
     // 编译单元解析
     std::unique_ptr<CompUnit> parseCompUnit();
 
@@ -30,7 +30,6 @@ private:
     Token advance();
     bool match(TokenType type);
     bool check(TokenType type) const;
-   // Token consume(TokenType type, const std::string &err_msg);
 
     // 恢复错误：同步到下一个声明或语句边界
     void synchronize();
@@ -84,29 +83,6 @@ private:
 
     bool isAtEnd();
     Token previous();
-};
-
-class ParseError : public std::exception
-{
-public:
-    ParseError(size_t line, const std::string &message)
-        : line_(line), message_("Error at line " + std::to_string(line) + ": " + message) {}
-
-    // 返回完整的错误信息（C风格字符串）
-    const char *what() const noexcept override
-    {
-        return message_.c_str();
-    }
-
-    // 获取错误发生的行号
-    size_t getLine() const noexcept
-    {
-        return line_;
-    }
-
-private:
-    size_t line_;         // 错误行号（从1开始）
-    std::string message_; // 完整错误信息
 };
 
 #endif

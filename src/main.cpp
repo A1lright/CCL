@@ -50,17 +50,10 @@ int main(int argc, char *argv[])
     std::unique_ptr<AST::CompUnit> program = parser.parseCompUnit();
     SyntaxOutputVisitor syntaxcout;
     program->accept(syntaxcout);
-    // program->accept(symbolManager);
 
     //语义分析
     SemanticAnalyzer semanticAnalyzer(symbolTable);
     program->accept(semanticAnalyzer);
-
-    // 语法树输出中间代码
-    CodeGenerator codeGenerator(symbolTable);
-    codeGenerator.generateCode(*program);
-    codeGenerator.emitMIPSAssembly("/home/lin/CCl/output.s");
-    codeGenerator.getModule()->print(llvm::outs(), nullptr);
 
     // 输出错误信息
     errorManager.reportErrors();
