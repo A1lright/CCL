@@ -78,6 +78,10 @@ public:
         std::cout << "<VarDecl>" << std::endl;
     }
 
+    void visit(ExpStmt &) {
+        
+    }
+
     // 语句
     void visit(Block &node)
     {

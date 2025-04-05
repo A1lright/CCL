@@ -34,13 +34,13 @@ void SymbolManager::visit(ConstDef &node)
     // 处理数组维度
     for (auto &dim : node.dimensions_)
     {
-        //auto val = eval_constant_expr(dim.get());
-        // if (!val)
-        // {
-        //     errors_.push_back("常量定义 '" + node.name_ + "' 维度必须是常量表达式");
-        //     return;
-        // }
-        // sym->dimensions_.push_back(val->intValue);
+        // auto val = eval_constant_expr(dim.get());
+        //  if (!val)
+        //  {
+        //      errors_.push_back("常量定义 '" + node.name_ + "' 维度必须是常量表达式");
+        //      return;
+        //  }
+        //  sym->dimensions_.push_back(val->intValue);
     }
 
     // 处理初始化值
@@ -125,11 +125,16 @@ void SymbolManager::visit(VarDecl &node)
 
 void SymbolManager::visit(Block &node)
 {
-    //push_scope();
-    for (auto &item : node.items_) {
+    // push_scope();
+    for (auto &item : node.items_)
+    {
         item->accept(*this);
     }
-    //pop_scope();
+    // pop_scope();
+}
+
+void SymbolManager::visit(ExpStmt &)
+{
 }
 
 void SymbolManager::visit(AssignStmt &node)
@@ -138,12 +143,14 @@ void SymbolManager::visit(AssignStmt &node)
     node.exp_->accept(*this);
 
     Symbol *sym = symtab_.lookup(node.lval_->name_);
-    if (!sym) {
+    if (!sym)
+    {
         errors_.push_back("赋值给未声明的变量 '" + node.lval_->name_ + "'");
         return;
     }
 
-    if (sym->symbolType_ == CONSTANT) {
+    if (sym->symbolType_ == CONSTANT)
+    {
         errors_.push_back("不能给常量 '" + node.lval_->name_ + "' 赋值");
     }
 
@@ -154,7 +161,8 @@ void SymbolManager::visit(IfStmt &node)
 {
     node.cond_->accept(*this);
     node.thenBranch_->accept(*this);
-    if (node.elseBranch_) {
+    if (node.elseBranch_)
+    {
         node.elseBranch_->accept(*this);
     }
 }
@@ -169,18 +177,23 @@ void SymbolManager::visit(WhileStmt &node)
 
 void SymbolManager::visit(ReturnStmt &node)
 {
-    if (contextStack.empty()) {
+    if (contextStack.empty())
+    {
         errors_.push_back("return语句不在函数内");
         return;
     }
 
     TokenType expected = contextStack.top().returnType;
-    if (node.exp_) {
+    if (node.exp_)
+    {
         node.exp_->accept(*this);
-        if (expected == TokenType::KEYWORD_VOID) {
+        if (expected == TokenType::KEYWORD_VOID)
+        {
             errors_.push_back("void函数不能返回数值");
         }
-    } else if (expected != TokenType::KEYWORD_VOID) {
+    }
+    else if (expected != TokenType::KEYWORD_VOID)
+    {
         errors_.push_back("非void函数必须返回数值");
     }
 }
@@ -188,14 +201,19 @@ void SymbolManager::visit(ReturnStmt &node)
 void SymbolManager::visit(IOStmt &node)
 {
     // TODO
-     // 根据类型检查参数
-     if (node.kind == IOStmt::IOKind::Getint) {
-        if (!node.target_) {
+    // 根据类型检查参数
+    if (node.kind == IOStmt::IOKind::Getint)
+    {
+        if (!node.target_)
+        {
             errors_.push_back("getint必须指定目标变量");
         }
         node.target_->accept(*this);
-    } else {
-        for (auto &arg : node.args_) {
+    }
+    else
+    {
+        for (auto &arg : node.args_)
+        {
             arg->accept(*this);
         }
     }
@@ -204,7 +222,8 @@ void SymbolManager::visit(IOStmt &node)
 void SymbolManager::visit(LVal &node)
 {
     Symbol *sym = symtab_.lookup(node.name_);
-    if (!sym) {
+    if (!sym)
+    {
         errors_.push_back("未声明的标识符 '" + node.name_ + "'");
         return;
     }
@@ -218,11 +237,16 @@ void SymbolManager::visit(LVal &node)
 
 void SymbolManager::visit(PrimaryExp &node)
 {
-    if (auto exp = std::get_if<std::unique_ptr<Exp>>(&node.operand_)) {
+    if (auto exp = std::get_if<std::unique_ptr<Exp>>(&node.operand_))
+    {
         (*exp)->accept(*this);
-    } else if (auto lval = std::get_if<std::unique_ptr<LVal>>(&node.operand_)) {
+    }
+    else if (auto lval = std::get_if<std::unique_ptr<LVal>>(&node.operand_))
+    {
         (*lval)->accept(*this);
-    } else if (auto num = std::get_if<std::unique_ptr<Number>>(&node.operand_)) {
+    }
+    else if (auto num = std::get_if<std::unique_ptr<Number>>(&node.operand_))
+    {
         (*num)->accept(*this);
     }
 }
@@ -234,8 +258,10 @@ void SymbolManager::visit(UnaryExp &node)
 
 void SymbolManager::visit(AddExp &node)
 {
-    for (auto &elem : node.elements_) {
-        if (auto exp = std::get_if<std::unique_ptr<Exp>>(&elem)) {
+    for (auto &elem : node.elements_)
+    {
+        if (auto exp = std::get_if<std::unique_ptr<Exp>>(&elem))
+        {
             (*exp)->accept(*this);
         }
     }
@@ -243,8 +269,10 @@ void SymbolManager::visit(AddExp &node)
 
 void SymbolManager::visit(MulExp &node)
 {
-    for (auto &elem : node.elements_) {
-        if (auto exp = std::get_if<std::unique_ptr<Exp>>(&elem)) {
+    for (auto &elem : node.elements_)
+    {
+        if (auto exp = std::get_if<std::unique_ptr<Exp>>(&elem))
+        {
             (*exp)->accept(*this);
         }
     }
@@ -269,18 +297,21 @@ void SymbolManager::visit(RelExp &node)
 void SymbolManager::visit(CallExp &node)
 {
     Symbol *sym = symtab_.lookup(node.funcName);
-    if (!sym || sym->symbolType_ != FUNCTION) {
+    if (!sym || sym->symbolType_ != FUNCTION)
+    {
         errors_.push_back("未定义的函数 '" + node.funcName + "'");
         return;
     }
 
-    auto funcSym = static_cast<FunctionSymbol*>(sym);
-    if (funcSym->paramTypes_.size() != node.args_.size()) {
+    auto funcSym = static_cast<FunctionSymbol *>(sym);
+    if (funcSym->paramTypes_.size() != node.args_.size())
+    {
         errors_.push_back("函数 '" + node.funcName + "' 参数数量不匹配");
         return;
     }
 
-    for (auto &arg : node.args_) {
+    for (auto &arg : node.args_)
+    {
         arg->accept(*this);
         // 类型检查（假设参数都是int）
     }
@@ -293,7 +324,7 @@ void SymbolManager::visit(Number &node)
 
 void SymbolManager::visit(FuncParam &node)
 {
-// 参数类型已在FuncDef中处理
+    // 参数类型已在FuncDef中处理
 }
 
 void SymbolManager::visit(FuncDef &node)
@@ -350,7 +381,8 @@ void SymbolManager::visit(MainFuncDef &node)
     funcSym->symbolType_ = FUNCTION;
     funcSym->dataType_ = TokenType::KEYWORD_INT;
 
-    if (!symtab_.addSymbol(std::move(funcSym))) {
+    if (!symtab_.addSymbol(std::move(funcSym)))
+    {
         errors_.push_back("重复定义的主函数");
     }
 

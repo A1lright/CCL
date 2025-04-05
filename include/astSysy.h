@@ -48,6 +48,7 @@ namespace AST
     class MainFuncDef; // 主函数定义（int main() { ... }）
 
     // 语句节点
+    class ExpStmt;   // 表达式语句（exp;）
     class Block;      // 语句块（{ ... }）
     class AssignStmt; // 赋值语句（a = 5;）
     class IfStmt;     // if语句（if (cond) stmt [else stmt]）
@@ -58,7 +59,6 @@ namespace AST
     // 表达式节点
     class LVal; // 左值（变量或数组元素）
     class PrimaryExp;
-    // class BinaryExp; // 二元运算表达式（a + b, a && b 等）
     class AddExp;
     class MulExp;
     class LOrExp;
@@ -100,6 +100,8 @@ namespace AST
         virtual void visit(ConstInitVal &) = 0;
 
         // 语句
+       
+        virtual void visit(ExpStmt &) = 0;
         virtual void visit(Block &) = 0;
         virtual void visit(BlockItem &) = 0;
         virtual void visit(AssignStmt &) = 0;
@@ -253,6 +255,17 @@ namespace AST
 
     //--------------------------------------------------------------------------
     // 语句块
+    class ExpStmt : public Stmt
+    {
+    public:
+        std::unique_ptr<Exp> exp_;
+
+        void accept(Visitor &v) override
+        {
+            v.visit(*this);
+        }
+    };
+
     class Block : public Stmt
     {
     public:

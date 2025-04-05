@@ -286,6 +286,10 @@ void CodeGenerator::visit(BlockItem &node)
 // 控制流语句
 //===----------------------------------------------------------------------===//
 
+void CodeGenerator::visit(ExpStmt &)
+{
+}
+
 void CodeGenerator::visit(Block &node)
 {
     for (auto &item : node.items_)

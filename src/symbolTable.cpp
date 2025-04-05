@@ -28,8 +28,8 @@ bool SymbolTable::addSymbol(std::unique_ptr<Symbol> symbol)
     auto &current = scopes_.back();
     if (current.find(symbol->name_) != current.end())
     {
-        
-        ErrorManager::getInstance().addError(ErrorLevel::ERROR,'b',symbol->lineDefined_,"Symbol '" + symbol->name_ + "' is redefined.",ErrorType::SyntaxError);
+
+        ErrorManager::getInstance().addError(ErrorLevel::ERROR, 'b', symbol->lineDefined_, "Symbol '" + symbol->name_ + "' is redefined.", ErrorType::SyntaxError);
         return false; // 重复定义
     }
 
@@ -90,11 +90,10 @@ void SymbolTable::addBuiltinFunctions()
     getintSymbol->lineDefined_ = 0;
     getintSymbol->columnDefined_ = 0;
 
-// 对于 getint，无参数列表，paramTypes_ 为空
+    // 对于 getint，无参数列表，paramTypes_ 为空
     getintSymbol->paramTypes_ = {};
 
     getintSymbol->hasReturn_ = true;
-    
 
     if (!this->addSymbol(std::move(getintSymbol)))
     {

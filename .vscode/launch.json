@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/CCL",
             "args": [
-                "${workspaceFolder}/test/test_simple.c"
+                "${workspaceFolder}/test/test_array_param_pass.c"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

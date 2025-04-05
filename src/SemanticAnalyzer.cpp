@@ -81,7 +81,6 @@ void SemanticAnalyzer::visit(VarDef &node)
     {
         if (variableSymbol->isArray_)
         {
-            
         }
         else
         {
@@ -97,6 +96,10 @@ void SemanticAnalyzer::visit(VarDecl &node)
     {
         varDef->accept(*this);
     }
+}
+
+void SemanticAnalyzer::visit(ExpStmt &)
+{
 }
 
 void SemanticAnalyzer::visit(Block &node)

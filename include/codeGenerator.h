@@ -57,6 +57,7 @@ public:
     void visit(VarDecl &node);
 
     // 语句
+    void visit(ExpStmt &);
     void visit(Block &node);
     void visit(AssignStmt &node);
     void visit(IfStmt &node);
@@ -67,7 +68,6 @@ public:
     // 表达式
     void visit(LVal &node);
     void visit(PrimaryExp &node);
-    // virtual void visit(BinaryExp &) = 0;
     void visit(UnaryExp &node);
     void visit(AddExp &node);
     void visit(MulExp &node);

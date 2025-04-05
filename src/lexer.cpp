@@ -215,6 +215,7 @@ void Lexer::tokenize()
     while (token.tokenType_ != TokenType::END_OF_FILE)
     {
         token = getNextToken();
+        std::cout << token << std::endl;
         tokens_.push_back(token);
     }
 }
@@ -251,7 +252,9 @@ Token Lexer::getNextToken()
     if (isalpha(c) || c == '_')
     {
         return readIdentifierOrKeyword();
-    }else if(c=='"'){
+    }
+    else if (c == '"')
+    {
         return readString();
     }
     else if (isdigit(c))
@@ -457,27 +460,32 @@ Token Lexer::readString()
 {
     int startLine = currentLine_;
     int startColumn = currentColumn_;
-    
+
     std::string value;
-    value+=peek();
+    value += peek();
     advance();
-    while (peek() != '"' && currentPosition_<=sourceCode_.length()) {
-        if (peek() == '\\') { // 处理转义
-            advance();
-            // 只允许\n转义
-            if (peek() != 'n') {
-                return Token(TokenType::ERROR, "Invalid escape sequence",startLine,startColumn);
+    while (peek() != '"' && currentPosition_ <= sourceCode_.length())
+    {
+        if (peek() == '\\')
+        { // 处理转义
+            // advance();
+            //  只允许\n转义
+            if (peek(1) != 'n')
+            {
+                return Token(TokenType::ERROR, "Invalid escape sequence", startLine, startColumn);
             }
-            advance();
+            value += '\\';
+            advance(); // 跳过
         }
-        value+=peek();
+        value += peek();
         advance();
     }
-    
-    if (currentPosition_>=sourceCode_.length()) return Token(TokenType::ERROR,"Unclosed string",startLine,startColumn);
-    value+=peek();
+
+    if (currentPosition_ >= sourceCode_.length())
+        return Token(TokenType::ERROR, "Unclosed string", startLine, startColumn);
+    value += peek();
     advance(); // 跳过闭合的"
-    return Token(TokenType::CONSTANT_STRING,value,startLine,startColumn);
+    return Token(TokenType::CONSTANT_STRING, value, startLine, startColumn);
 }
 
 Token Lexer::readOperator()
@@ -517,7 +525,7 @@ Token Lexer::readOperator()
         return Token(operators_[first], first, startLine, startColumn);
     }
 
-    return Token(TokenType::UNKNOW,first,startLine,startColumn);
+    return Token(TokenType::UNKNOW, first, startLine, startColumn);
 }
 
 Token Lexer::readSymbol()
@@ -552,21 +560,24 @@ void Lexer::skipWhitespaceOrComments()
                 {
                     advance();
                 }
-                if (peek() == '\0') { // 文件结束
-                    tokens_.push_back(Token(TokenType::ERROR, "Unclosed comment",currentLine_,currentColumn_));
+                if (peek() == '\0')
+                { // 文件结束
+                    tokens_.push_back(Token(TokenType::ERROR, "Unclosed comment", currentLine_, currentColumn_));
                     return;
                 }
                 advance();
                 advance();
             }
         }
-        else if(isspace(peek()))
+        else if (isspace(peek()))
         {
             while (std::isspace(peek()))
             {
                 advance();
             }
-        }else{
+        }
+        else
+        {
             break;
         }
     }

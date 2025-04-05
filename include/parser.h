@@ -78,11 +78,13 @@ private:
     std::unique_ptr<FuncType> parseFuncType();
     std::unique_ptr<BType> parseBType();
     std::unique_ptr<Exp> parseConstExp();
-    std::unique_ptr<Stmt> parseExprStmt();
+    std::unique_ptr<Stmt> parseExpStmt();
     std::unique_ptr<CallExp> parseCallExp();
 
     bool isAtEnd();
     Token previous();
+
+    bool isAssignStmt();
 };
 
 #endif

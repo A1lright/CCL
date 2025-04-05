@@ -42,9 +42,7 @@ std::unique_ptr<ConstDecl> Parser::parseConstDecl()
 {
     auto const_decl = std::make_unique<ConstDecl>();
 
-    // consume(TokenType::KEYWORD_CONST, "Expect 'const'");
-
-    advance();
+    advance(); // consume "const"
     // 解析BType（目前只有int）
     const_decl->bType_ = parseBType();
 
@@ -72,8 +70,7 @@ std::unique_ptr<ConstDecl> Parser::parseConstDecl()
         const_decl->constDefs_.push_back(std::move(const_def));
     } while (match(TokenType::PUNCTUATION_COMMA));
 
-    // consume(TokenType::PUNCTUATION_SEMICOLON, "Expect ';' after const declaration");
-    advance();
+    advance(); // consume ";"
 
     return const_decl;
 }
@@ -144,6 +141,7 @@ std::unique_ptr<VarDef> Parser::parseVarDef()
     // 解析数组维度[ConstExp]
     while (match(TokenType::PUNCTUATION_LEFT_BRACKET))
     {
+        // 非法情况：int a[];需要排除
         var_def->constExps_.push_back(parseConstExp());
         advance();
     }
@@ -173,7 +171,7 @@ std::unique_ptr<FuncDef> Parser::parseFuncDef()
     func_def->name_ = advance().value_;
 
     // 解析形参列表
-    advance();
+    advance(); // consume "("
     std::vector<TokenType> paramTypes;
     if (!check(TokenType::PUNCTUATION_RIGHT_PAREN))
     {
@@ -201,7 +199,7 @@ std::unique_ptr<FuncDef> Parser::parseFuncDef()
             func_def->params_.push_back(std::move(param));
         } while (match(TokenType::PUNCTUATION_COMMA));
     }
-    advance();
+    advance(); // consume ")"
 
     // 创建函数符号对象并添加到全局符号表
     auto funcSymbol = std::make_unique<FunctionSymbol>();
@@ -225,10 +223,10 @@ std::unique_ptr<FuncDef> Parser::parseFuncDef()
 std::unique_ptr<MainFuncDef> Parser::parseMainFuncDef()
 {
     auto main_func_def = std::make_unique<MainFuncDef>();
-    advance();  // consume "int"
-    advance();  // consume "main"
-    advance();  // consume "("
-    advance();  // consume ")"
+    advance(); // consume "int"
+    advance(); // consume "main"
+    advance(); // consume "("
+    advance(); // consume ")"
 
     // 将 main 函数符号添加到全局符号表
     // 创建一个函数符号对象，用于表示 main 函数
@@ -280,13 +278,14 @@ std::unique_ptr<Block> Parser::parseBlock()
     auto block = std::make_unique<Block>();
     if (check(TokenType::PUNCTUATION_LEFT_BRACE))
     {
-        advance();  // consume '{'
+        advance(); // consume '{'
         while (!check(TokenType::PUNCTUATION_RIGHT_BRACE))
         {
             block->items_.push_back(parseBlockItem());
         }
     }
     // 退出局部作用域
+    advance(); // consume '}'
     symbolTable_.addFunctionSymbol("main");
     symbolTable_.exitScope();
     return block;
@@ -315,7 +314,11 @@ std::unique_ptr<BlockItem> Parser::parseBlockItem()
 
 std::unique_ptr<Stmt> Parser::parseStmt()
 {
-    if (match(TokenType::PUNCTUATION_LEFT_BRACE))
+    if (isAssignStmt())
+    {
+        return parseAssignStmt();
+    }
+    else if (match(TokenType::PUNCTUATION_LEFT_BRACE))
     {
         return parseBlock();
     }
@@ -335,17 +338,13 @@ std::unique_ptr<Stmt> Parser::parseStmt()
     {
         return parseGetintStmt();
     }
-    else if (check(TokenType::IDENTIFIER) && peek(1).tokenType_ == TokenType::OPERATOR_ASSIGN) //?????
-    {
-        return parseAssignStmt();
-    }
     else if (check(TokenType::KEYWORD_PRINTF))
     {
         return parsePrintfStmt();
     }
     else
     {
-        return parseExprStmt();
+        return parseExpStmt();
     }
 }
 
@@ -433,8 +432,6 @@ std::unique_ptr<Exp> Parser::parseLogicalAndExp()
     }
     return exp;
 }
-
-// 类似地实现其他优先级层次（Equality, Relational, Additive, Multiplicative）
 
 std::unique_ptr<Exp> Parser::parseEqExp()
 {
@@ -642,8 +639,8 @@ std::unique_ptr<LVal> Parser::parseLVal()
     else
     {
     }
-    advance();  // consume IDENTIFIER
-    // advance();
+    advance(); // consume IDENTIFIER
+
     while (match(TokenType::PUNCTUATION_LEFT_BRACKET))
     {
         lVal->indices_.push_back(parseExp());
@@ -696,7 +693,7 @@ std::unique_ptr<InitVal> Parser::parseInitVal()
     }
 
     // 情况2：初始化值为数组初始化列表（{ ... }）
-    advance();
+    advance(); // consume '{'
 
     std::vector<std::unique_ptr<InitVal>> elements;
 
@@ -714,7 +711,7 @@ std::unique_ptr<InitVal> Parser::parseInitVal()
         }
     }
 
-    advance();
+    advance();                              // consume '}'
     init_val->value_ = std::move(elements); // 保存嵌套的初始化列表
     return init_val;
 }
@@ -730,7 +727,7 @@ std::unique_ptr<FuncType> Parser::parseFuncType()
 std::unique_ptr<BType> Parser::parseBType()
 {
     auto bType = std::make_unique<BType>();
-    bType->typeName_ = advance().value_;    //  // 目前只有int
+    bType->typeName_ = advance().value_; //  // 目前只有int
     return bType;
 }
 
@@ -739,9 +736,12 @@ std::unique_ptr<Exp> Parser::parseConstExp()
     return parseAddExp();
 }
 
-std::unique_ptr<Stmt> Parser::parseExprStmt()
+std::unique_ptr<Stmt> Parser::parseExpStmt()
 {
-    return std::unique_ptr<Stmt>();
+    auto exp_stmt = std::make_unique<ExpStmt>();
+    exp_stmt->exp_ = parseExp();
+    advance(); // consume ";"
+    return exp_stmt;
 }
 
 std::unique_ptr<CallExp> Parser::parseCallExp()
@@ -756,7 +756,7 @@ std::unique_ptr<CallExp> Parser::parseCallExp()
         // 报告错误
     }
 
-    advance();
+    advance(); // consume "("
 
     // 解析参数列表（可能为空）
     if (!check(TokenType::PUNCTUATION_RIGHT_PAREN))
@@ -767,7 +767,7 @@ std::unique_ptr<CallExp> Parser::parseCallExp()
         } while (match(TokenType::PUNCTUATION_COMMA));
     }
 
-    advance();
+    advance(); // consume ")"
     return call_exp;
 }
 
@@ -781,19 +781,33 @@ Token Parser::previous()
     return current_ != 0 ? tokens_[current_ - 1] : tokens_[0];
 }
 
+bool Parser::isAssignStmt()
+{
+    size_t i = 0;
+    while (peek(i).tokenType_ != TokenType::PUNCTUATION_SEMICOLON)
+    {
+        if (peek(i).tokenType_ == TokenType::OPERATOR_ASSIGN)
+        {
+            return true;
+        }
+        i++;
+    }
+    return false;
+}
+
 std::unique_ptr<IOStmt> Parser::parsePrintfStmt()
 {
     auto stmt = std::make_unique<IOStmt>();
     stmt->kind = IOStmt::IOKind::Printf;
-    advance();  // consume "printf"
-    advance();  // consume "("
+    advance(); // consume "printf"
+    advance(); // consume "("
 
     // 解析格式字符串
     if (!check(TokenType::CONSTANT_STRING))
     {
     }
     stmt->formatString_ = token_.value_;
-    advance();  // consume format string
+    advance(); // consume format string
 
     // 解析参数列表
     if (match(TokenType::PUNCTUATION_COMMA))
@@ -804,8 +818,8 @@ std::unique_ptr<IOStmt> Parser::parsePrintfStmt()
         } while (match(TokenType::PUNCTUATION_COMMA));
     }
 
-    advance();  // consume ")"
-    advance();  // consume ";"
+    advance(); // consume ")"
+    advance(); // consume ";"
     return stmt;
 }
 
@@ -814,11 +828,11 @@ std::unique_ptr<IOStmt> Parser::parseGetintStmt()
     auto stmt = std::make_unique<IOStmt>();
     stmt->kind = IOStmt::IOKind::Getint;
     stmt->target_ = parseLVal();
-    advance();  // consume "="
-    advance();  // consume "getint"
-    advance();  // consume "("
-    advance();  // consume ")"
-    advance();  // consume ";"
+    advance(); // consume "="
+    advance(); // consume "getint"
+    advance(); // consume "("
+    advance(); // consume ")"
+    advance(); // consume ";"
     return stmt;
 }
 

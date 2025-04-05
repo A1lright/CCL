@@ -21,6 +21,7 @@ public:
     void visit(VarDecl &node);
 
     // 语句
+    void visit(ExpStmt &);
     void visit(Block &node);
     void visit(AssignStmt &node);
     void visit(IfStmt &node);

@@ -1,3 +1,5 @@
+//Through lexical and syntatic analysis
+
 void modify(int a[]) {
     a[0] = 99;
 }
