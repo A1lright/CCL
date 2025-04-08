@@ -19,7 +19,8 @@
                 "-GNinja",
                 "-DLLVM_DIR=/home/lin/llvm_project_1706/llvm_install_dir/lib/cmake/llvm",
                 "-DCMAKE_BUILD_TYPE=Debug",
-                "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+                "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+                "-DCMAKE_CXX_FLAGS=-frtti"
             ],
             "options": {
                 "cwd": "${workspaceFolder}/build"

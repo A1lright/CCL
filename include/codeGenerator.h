@@ -5,24 +5,23 @@
 #include <vector>
 #include "astSysy.h"
 #include "symbolTable.h"
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Value.h>
+#include "evalConstant.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/ADT/DenseMap.h"
+
+
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/MC/MCTargetOptions.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
-#include "llvm/MC/MCAsmInfo.h"
-#include "llvm/Option/Option.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Support/FileSystem.h"
-#include "llvm/Support/ToolOutputFile.h"
 
 using namespace AST;
 using namespace llvm;
@@ -35,7 +34,7 @@ class CodeGenerator : public AST::Visitor
 {
 public:
     // 初始化/清理
-    CodeGenerator(SymbolTable &symtab);
+    CodeGenerator();
     ~CodeGenerator();
 
     void emitMIPSAssembly(const std::string &outputFilename);
@@ -88,45 +87,37 @@ public:
     void visit(InitVal &node);
     void visit(ConstInitVal &node);
     void visit(BlockItem &node);
+    void visit(FuncType &node);
 
 private:
     // LLVM核心组件
     llvm::LLVMContext context_;
     llvm::IRBuilder<> builder_;
     std::unique_ptr<llvm::Module> module_;
+    llvm::Function *currentFunc_ = nullptr;
 
+
+private:
+    void AddLocalVarToMap(llvm::Value *addr, llvm::Type *ty, llvm::StringRef name);
+    void AddGlobalVarToMap(llvm::Value *addr, llvm::Type *ty, llvm::StringRef name);
+    std::pair<llvm::Value *, llvm::Type *> GetVarByName(llvm::StringRef name);
+    
+
+    void PushScope();
+    void PopScope();
+    void ClearVarScope();
+
+private:
     // 符号表
-    SymbolTable &symtab_;
-
-    // 类型系统
-    // llvm::Type* getLLVMType(const Type& type);
-    Function *createGetintFunction(Module *module, LLVMContext &context);
-    // 数组处理
-    llvm::Value *handleArraySubscript(llvm::Value *base,
-                                      const std::vector<std::unique_ptr<AST::Exp>> &indices);
-    void handleGlobalInit(llvm::GlobalVariable *gvar,
-                          const AST::InitVal &initVal);
-    llvm::Value *generateInitValue(const AST::InitVal &initVal);
-
-    // 控制流辅助
-    llvm::BasicBlock *createMergeBlock(const std::string &name = "");
-    bool verifyTerminator();
-
-    // 错误处理
-    void reportError(const std::string &msg, int line);
-
-    // 当前函数上下文
-    llvm::Function *currentFunction = nullptr;
-
-    // 循环上下文栈（处理break/continue）
-    struct LoopContext
-    {
-        llvm::BasicBlock *condBlock;
-        llvm::BasicBlock *exitBlock;
-    };
-    std::vector<LoopContext> loopStack;
+    llvm::SmallVector<llvm::StringMap<std::pair<llvm::Value *, llvm::Type *>>> localVarMap;
+    llvm::StringMap<std::pair<llvm::Value *, llvm::Type *>> globalVarMap;
 
     llvm::Value *currentValue_ = nullptr;
+
+    Function *createGetintFunction(Module *module, LLVMContext &context);
+
+
+    EvalConstant evalConstant;
 };
 
 #endif // CODEGENERATOR_H

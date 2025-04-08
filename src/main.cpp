@@ -1,10 +1,8 @@
 #include "lexer.h"
 #include "parser.h"
 #include "symbolTable.h"
-#include "SymbolTypeBuilder.h"
-#include "codeGenerator.h"
 #include "SemanticAnalyzer.h"
-#include "SyntaxOutputVisitor.hpp"
+#include "codeGenerator.h"
 #include <iostream>
 #include <fstream>
 
@@ -48,12 +46,14 @@ int main(int argc, char *argv[])
     // 语法分析
     Parser parser(tokenVector, symbolTable);
     std::unique_ptr<AST::CompUnit> program = parser.parseCompUnit();
-    SyntaxOutputVisitor syntaxcout;
-    program->accept(syntaxcout);
 
-    //语义分析
-    SemanticAnalyzer semanticAnalyzer(symbolTable);
-    program->accept(semanticAnalyzer);
+    // 语义分析
+    SemanticAnalyzer sema;
+    program->accept(sema);
+
+    CodeGenerator codeGen;
+    program->accept(codeGen);
+    codeGen.emitMIPSAssembly("output.s");
 
     // 输出错误信息
     errorManager.reportErrors();

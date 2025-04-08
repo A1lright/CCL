@@ -215,7 +215,6 @@ void Lexer::tokenize()
     while (token.tokenType_ != TokenType::END_OF_FILE)
     {
         token = getNextToken();
-        std::cout << token << std::endl;
         tokens_.push_back(token);
     }
 }

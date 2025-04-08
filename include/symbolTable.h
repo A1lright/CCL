@@ -9,7 +9,6 @@
 #include "llvm/IR/Value.h"
 #include "ErrorManager.h"
 
-class SymbolTable;
 
 // 符号类型分类
 enum SymbolType
@@ -29,7 +28,6 @@ public:
     SymbolType symbolType_;
     TokenType dataType_; // 从TokenType继承的类型如INTTK, VOIDTK等
     int lineDefined_;
-    int columnDefined_;
 
     Symbol() = default;
 
@@ -41,13 +39,7 @@ class VariableSymbol : public Symbol
 {
 public:
     bool isConst_;
-    bool isArray_;
-    std::vector<int> dimensions_; // 数组维度信息
-    union
-    {
-        int intValue;
-        bool boolValue;
-    } initValue_;
+    int initValue_;
 
     llvm::Value *allocaInst_; // 变量对应的内存地址
 
@@ -74,9 +66,6 @@ public:
     std::vector<TokenType> paramTypes_; // 参数类型列表
     bool hasReturn_;                    // 是否包含返回值
 
-    //TODO通过指针实现嵌套作用域的实现
-    std::unique_ptr<SymbolTable> funcTable_;
-
     FunctionSymbol() = default;
 };
 
@@ -85,8 +74,6 @@ class SymbolTable
 {
     using Scope = std::unordered_map<std::string, std::unique_ptr<Symbol>>;
     std::vector<Scope> scopes_; // 作用域栈,最终全局函数，全局变量，全局常量都在这里
-
-    std::unordered_map<std::string, Scope> functionSymbols_; // 函数局部符号表，保存函数内部局部变量和参数
 
     void addBuiltinFunctions();
 
@@ -105,39 +92,8 @@ public:
     // 查找符号（从内到外）
     Symbol *lookup(const std::string &name);
 
-    // 类型兼容性检查
-    static bool checkTypeCompatibility(TokenType t1, TokenType t2);
-
-    // 函数参数检查
-    bool checkFunctionArgs(const std::string &funcName,
-                           const std::vector<TokenType> &argTypes);
-
-    int currentScopeLevel()
-    {
-        return scopes_.size() - 1;
-    }
-
-    // 添加函数局部符号
-    void addFunctionSymbol(const std::string &funcName)
-    {
-        functionSymbols_[funcName] = std::move(scopes_.back());
-    }
-
-    // 在函数局部符号表中查找指定函数内部的符号
-    Symbol *lookupFunctionSymbol(const std::string &funcName, const std::string &name)
-    {
-        auto it = functionSymbols_.find(funcName);
-        if (it != functionSymbols_.end())
-        {
-            auto &scope = it->second;
-            auto found = scope.find(name);
-            if (found != scope.end())
-            {
-                return found->second.get();
-            }
-        }
-        return nullptr;
-    }
+    // 查找符号（仅在当前作用域内）
+    Symbol *lookupInCurrentScope(const std::string &name);
 };
 
 #endif

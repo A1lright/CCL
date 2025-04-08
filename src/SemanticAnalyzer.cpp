@@ -1,542 +1,822 @@
 #include "SemanticAnalyzer.h"
-#include <optional>
-#include <variant>
+#include <iostream>
 
+// 遍历编译单元
 void SemanticAnalyzer::visit(CompUnit &node)
 {
-    // 处理所有声明
+    // 处理全局声明
     for (auto &decl : node.decls_)
     {
         decl->accept(*this);
     }
-
-    // 处理所有函数定义
+    // 处理函数定义
     for (auto &funcDef : node.funcDefs_)
     {
         funcDef->accept(*this);
     }
-
-    // 处理主函数定义
+    // 处理主函数
     if (node.mainfuncDef_)
     {
         node.mainfuncDef_->accept(*this);
     }
 }
 
-void SemanticAnalyzer::visit(ConstDef &node)
+void SemanticAnalyzer::visit(ConstDef &)
 {
-    // 检查常量是否已定义
-
-    // 处理常量初始化值
-    if (node.initVal_)
-    {
-        node.initVal_->accept(*this);
-    }
-
-    auto symbol = symbolTable_.lookup(node.name_);
-    static_cast<VariableSymbol *>(symbol)->initValue_.intValue = value_;
-
-    // 在符号表中添加常量
-    // auto symbol = std::make_unique<VariableSymbol>();
-    // symbol->name_ = node.name_;
-    // symbol->symbolType_ = CONSTANT;
-    // symbol->isConst_ = true;
-    // symbolTable_.addSymbol(std::move(symbol));
-}
-
-void SemanticAnalyzer::visit(ConstDecl &node)
-{
-    for (auto &constDef : node.constDefs_)
-    {
-        constDef->accept(*this);
-    }
 }
 
 void SemanticAnalyzer::visit(VarDef &node)
 {
-    // 检查变量是否已定义
-    //  if (symbolTable_.lookup(node.name_)) {
-    //     std::cerr << "Error: Variable '" << node.name_ << "' already defined.\n";
-    //     return;
-    // }
+}
 
-    // 在符号表中添加变量
-    // auto symbol = std::make_unique<VariableSymbol>();
-    // symbol->name_ = node.name_;
-    // symbol->symbolType_ = SymbolType::VARIABLE;
-    // symbol->dataType_ = node.bType_->typeName_;  // 假设 `bType_` 存储类型
-    // symbolTable_.addSymbol(std::move(symbol));
+// --- 声明处理 ---
+// 处理常量声明（例如 const int a=1, b[2]={1,2};）
+void SemanticAnalyzer::visit(ConstDecl &node)
+{
+    EvalConstant evaluator; // 用于常量求值
 
-    // 处理变量的初始化值
-    if (node.initVal_)
+    for (auto &constDef : node.constDefs_)
     {
-        node.initVal_->accept(*this);
-    }
-
-    auto symbol = symbolTable_.lookup(node.name_);
-
-    auto variableSymbol = static_cast<VariableSymbol *>(symbol);
-
-    if (node.hasInit)
-    {
-        if (variableSymbol->isArray_)
+        if (symbolTable.lookupInCurrentScope(constDef->name_) != nullptr)
         {
+            errorManager.addError(ErrorLevel::ERROR, 'b', 0,
+                                  "重复定义常量：" + constDef->name_,
+                                  ErrorType::SemanticError);
         }
         else
         {
-            variableSymbol->initValue_.intValue = value_;
+            // 如果存在数组维度，说明该常量是数组
+            if (!constDef->dimensions_.empty())
+            {
+                auto arraySymbol = std::make_unique<ArraySymbol>();
+                arraySymbol->name_ = constDef->name_;
+                arraySymbol->symbolType_ = CONSTANT;
+                arraySymbol->dataType_ = TokenType::KEYWORD_INT;
+                arraySymbol->lineDefined_ = 0;
+                arraySymbol->isConst_ = true;
+
+                // 计算数组维度，维度必须是常量表达式
+                for (auto &dimExp : constDef->dimensions_)
+                {
+                    int dimSize = evaluator.Eval(dimExp.get());
+                    if (dimSize <= 0)
+                    {
+                        errorManager.addError(ErrorLevel::ERROR, 'c', 0,
+                                              "常量数组维度必须大于0：" + constDef->name_,
+                                              ErrorType::SemanticError);
+                    }
+                    arraySymbol->dimensions_.push_back(dimSize);
+                }
+
+                // 数组初始化检查
+                if (constDef->hasInit)
+                {
+                    auto &initValues = constDef->initVal_;
+                    // 判断是否符合数组初始化的要求
+                    if (std::holds_alternative<std::vector<std::unique_ptr<ConstInitVal>>>(initValues->value_))
+                    {
+                        auto &initList = std::get<std::vector<std::unique_ptr<ConstInitVal>>>(initValues->value_);
+                        int totalElements = arraySymbol->dimensions_.size();
+                        // for (size_t i = 0; i < arraySymbol->dimensions_.size(); ++i)
+                        // {
+                        //     totalElements *= arraySymbol->dimensions_[i];
+                        // }
+
+                        if (initList.size() != totalElements)
+                        {
+                            errorManager.addError(ErrorLevel::ERROR, 'd', 0,
+                                                  "常量数组初始化元素数量与维度不匹配：" + constDef->name_,
+                                                  ErrorType::SemanticError);
+                        }
+
+                        // 对数组初始化元素进行求值
+                        std::vector<int> evaluatedValues;
+                        if (!checkAndEvaluateConstInitList(initList, arraySymbol->dimensions_, 0, evaluator,
+                                                           evaluatedValues, errorManager, constDef->name_))
+                        {
+                            // 如果有错误，返回
+                            return;
+                        }
+
+                        // 初始化符号表中的常量数组
+                        arraySymbol->initValues_ = std::move(evaluatedValues);
+                    }
+                    else
+                    {
+                        errorManager.addError(ErrorLevel::ERROR, 'e', 0,
+                                              "非数组初始化不能应用于常量数组：" + constDef->name_,
+                                              ErrorType::SemanticError);
+                    }
+                }
+
+                // 添加常量数组符号到符号表
+                if (!symbolTable.addSymbol(std::move(arraySymbol)))
+                {
+                    errorManager.addError(ErrorLevel::ERROR, 'n', 0,
+                                          "添加常量数组符号失败：" + constDef->name_,
+                                          ErrorType::SemanticError);
+                }
+            }
+            else // 处理普通常量
+            {
+                auto symbol = std::make_unique<VariableSymbol>();
+                symbol->name_ = constDef->name_;
+                symbol->symbolType_ = CONSTANT;
+                symbol->dataType_ = TokenType::KEYWORD_INT;
+                symbol->lineDefined_ = 0;
+                symbol->isConst_ = true;
+
+                // 常量必须有初始化值，且必须能在编译时求值
+                try
+                {
+                    symbol->initValue_ = evaluator.Eval(constDef->initVal_.get());
+                }
+                catch (std::runtime_error &e)
+                {
+                    errorManager.addError(ErrorLevel::ERROR, 'f', 0,
+                                          "常量求值失败：" + constDef->name_ + "，" + e.what(),
+                                          ErrorType::SemanticError);
+                }
+                if (!symbolTable.addSymbol(std::move(symbol)))
+                {
+                    errorManager.addError(ErrorLevel::ERROR, 'n', 0,
+                                          "添加常量符号失败：" + constDef->name_,
+                                          ErrorType::SemanticError);
+                }
+            }
         }
     }
 }
 
+// 处理变量声明（例如 int a, b[2];）
 void SemanticAnalyzer::visit(VarDecl &node)
 {
-    // 处理每个变量定义
+    EvalConstant evaluator; // 用于常量求值
+
     for (auto &varDef : node.varDefs_)
     {
-        varDef->accept(*this);
+        if (symbolTable.lookupInCurrentScope(varDef->name_) != nullptr)
+        {
+            errorManager.addError(ErrorLevel::ERROR, 'b', 0,
+                                  "重复定义变量：" + varDef->name_,
+                                  ErrorType::SemanticError);
+        }
+        else
+        {
+            auto symbol = std::make_unique<VariableSymbol>();
+            symbol->name_ = varDef->name_;
+            symbol->symbolType_ = VARIABLE;
+            symbol->dataType_ = TokenType::KEYWORD_INT;
+            symbol->lineDefined_ = 0;
+            symbol->isConst_ = false;
+
+            // 处理数组声明
+            if (!varDef->constExps_.empty()) // 判断是否是数组
+            {
+                // 数组符号
+                auto arraySymbol = std::make_unique<ArraySymbol>();
+                arraySymbol->name_ = varDef->name_;
+                arraySymbol->symbolType_ = ARRAY;
+                arraySymbol->dataType_ = TokenType::KEYWORD_INT;
+                arraySymbol->lineDefined_ = 0;
+                arraySymbol->isConst_ = false;
+
+                // 计算数组维度，维度必须是常量表达式
+                for (auto &dimExp : varDef->constExps_)
+                {
+                    int dimSize = evaluator.Eval(dimExp.get());
+                    if (dimSize <= 0)
+                    {
+                        errorManager.addError(ErrorLevel::ERROR, 'c', 0,
+                                              "数组维度必须大于0：" + varDef->name_,
+                                              ErrorType::SemanticError);
+                    }
+                    arraySymbol->dimensions_.push_back(dimSize);
+                }
+
+                // 数组初始化检查
+                if (varDef->hasInit)
+                {
+                    auto &initValues = varDef->initVal_;
+                    // 判断是否符合数组初始化的要求
+                    if (std::holds_alternative<std::vector<std::unique_ptr<InitVal>>>(initValues->value_))
+                    {
+                        auto &initList = std::get<std::vector<std::unique_ptr<InitVal>>>(initValues->value_);
+                        int totalElements = arraySymbol->dimensions_.size();
+                        // for (size_t i = 0; i < arraySymbol->dimensions_.size(); ++i)
+                        // {
+                        //     totalElements *= arraySymbol->dimensions_[i];
+                        // }
+
+                        if (initList.size() != totalElements)
+                        {
+                            errorManager.addError(ErrorLevel::ERROR, 'd', 0,
+                                                  "数组初始化元素数量与维度不匹配：" + varDef->name_,
+                                                  ErrorType::SemanticError);
+                        }
+
+                        // 对数组初始化元素进行求值
+                        std::vector<int> evaluatedValues;
+                        if (!checkAndEvaluateInitList(initList, arraySymbol->dimensions_, 0, evaluator,
+                                                      evaluatedValues, errorManager, varDef->name_))
+                        {
+                            // 如果有错误，返回
+                            return;
+                        }
+
+                        // 初始化符号表中的数组
+                        arraySymbol->initValues_ = std::move(evaluatedValues);
+                    }
+                    else
+                    {
+                        errorManager.addError(ErrorLevel::ERROR, 'e', 0,
+                                              "非数组初始化不能应用于数组：" + varDef->name_,
+                                              ErrorType::SemanticError);
+                    }
+                }
+
+                // 添加数组符号到符号表
+                if (!symbolTable.addSymbol(std::move(arraySymbol)))
+                {
+                    errorManager.addError(ErrorLevel::ERROR, 'n', 0,
+                                          "添加数组符号失败：" + varDef->name_,
+                                          ErrorType::SemanticError);
+                }
+            }
+            else // 处理普通变量
+            {
+                if (varDef->hasInit)
+                {
+                    symbol->initValue_ = evaluator.Eval(varDef->initVal_.get());
+                }
+                if (!symbolTable.addSymbol(std::move(symbol)))
+                {
+                    errorManager.addError(ErrorLevel::ERROR, 'n', 0,
+                                          "添加变量符号失败：" + varDef->name_,
+                                          ErrorType::SemanticError);
+                }
+            }
+        }
     }
 }
 
-void SemanticAnalyzer::visit(ExpStmt &)
+// 处理基本类型（目前只有 int，不必做过多检查）
+void SemanticAnalyzer::visit(BType &node)
 {
+    // 可根据类型名扩展
 }
 
-void SemanticAnalyzer::visit(Block &node)
+// 处理变量初始化值（这里只作为占位，详细语义检查在各自节点中递归完成）
+void SemanticAnalyzer::visit(InitVal &node)
 {
-    // 进入新的作用域
-    // symbolTable_.enterScope();
-
-    // 处理每个块内的项目（声明或语句）
-    for (auto &item : node.items_)
+    // 如果是表达式，直接检查；如果是数组初始化列表，递归处理每个子 InitVal
+    if (std::holds_alternative<std::unique_ptr<Exp>>(node.value_))
     {
-        item->accept(*this);
+        std::get<std::unique_ptr<Exp>>(node.value_)->accept(*this);
     }
-
-    // 退出当前作用域
-    // symbolTable_.exitScope();
-}
-
-void SemanticAnalyzer::visit(AssignStmt &node)
-{
-    // 检查左值是否合法
-    node.lval_->accept(*this);
-
-    // 计算右值
-    node.exp_->accept(*this);
-
-    // 赋值操作
-    value_ = value_; // 此时 `value_` 已经被更新为右值的计算结果
-}
-
-void SemanticAnalyzer::visit(IfStmt &node)
-{
-    // 计算条件表达式
-    node.cond_->accept(*this);
-
-    // 根据条件判断是否执行相应的代码块
-    if (value_ != 0)
-    {                                    // 如果条件为真
-        node.thenBranch_->accept(*this); // 执行 then 分支
-    }
-    else if (node.elseBranch_)
-    {                                    // 如果有 else 分支
-        node.elseBranch_->accept(*this); // 执行 else 分支
+    else
+    {
+        auto &list = std::get<std::vector<std::unique_ptr<InitVal>>>(node.value_);
+        for (auto &elem : list)
+        {
+            elem->accept(*this);
+        }
     }
 }
 
-void SemanticAnalyzer::visit(WhileStmt &node)
+// 处理常量初始化值（同 InitVal 处理方式类似，但要求其表达式能在编译期求值）
+void SemanticAnalyzer::visit(ConstInitVal &node)
 {
-    // 计算条件表达式
-    node.cond_->accept(*this);
-
-    while (value_ != 0)
-    {                              // 如果条件为真
-        node.body_->accept(*this); // 执行循环体
-        node.cond_->accept(*this); // 再次计算条件，确保循环继续
+    if (std::holds_alternative<std::unique_ptr<Exp>>(node.value_))
+    {
+        std::get<std::unique_ptr<Exp>>(node.value_)->accept(*this);
+    }
+    else
+    {
+        auto &list = std::get<std::vector<std::unique_ptr<ConstInitVal>>>(node.value_);
+        for (auto &elem : list)
+        {
+            elem->accept(*this);
+        }
     }
 }
 
-void SemanticAnalyzer::visit(ReturnStmt &node)
+// --- 函数与形参 ---
+// 处理函数定义
+void SemanticAnalyzer::visit(FuncDef &node)
 {
-    // 如果返回的是一个表达式，计算其值
+    // 在当前作用域中检查函数是否已定义
+    if (symbolTable.lookupInCurrentScope(node.name_) != nullptr)
+    {
+        errorManager.addError(ErrorLevel::ERROR, 'b', 0, "重复定义函数：" + node.name_, ErrorType::SemanticError);
+    }
+    else
+    {
+        auto symbol = std::make_unique<FunctionSymbol>();
+        symbol->name_ = node.name_;
+        symbol->symbolType_ = FUNCTION;
+        // 根据函数返回类型来设置 dataType_，此处简单处理为 int 或 void
+        symbol->dataType_ = (node.returnType_->typeName_ == "int") ? TokenType::KEYWORD_INT : TokenType::KEYWORD_VOID;
+        symbol->lineDefined_ = 0;
+        // 收集参数类型（这里只以 int 为例）
+        for (auto &param : node.params_)
+        {
+            param->accept(*this); // 处理形参时也可以加入符号表
+            symbol->paramTypes_.push_back(TokenType::KEYWORD_INT);
+        }
+        if (!symbolTable.addSymbol(std::move(symbol)))
+        {
+            errorManager.addError(ErrorLevel::ERROR, 'n', 0, "添加函数符号失败：" + node.name_, ErrorType::SemanticError);
+        }
+    }
+    // 进入函数新作用域，添加形参符号
+    symbolTable.enterScope();
+    for (auto &param : node.params_)
+    {
+        // 这里可以将每个形参添加到符号表中，类似 VarDecl 的处理
+        // …（略）
+    }
+    // 处理函数体
+    node.body_->accept(*this);
+    symbolTable.exitScope();
+}
+
+// 处理主函数（与普通函数类似）
+void SemanticAnalyzer::visit(MainFuncDef &node)
+{
+    // symbolTable.enterScope();
+    node.body_->accept(*this);
+    // symbolTable.exitScope();
+}
+
+// 处理函数形参（示例中暂不详细展开，可在此处添加数组参数等检查）
+void SemanticAnalyzer::visit(FuncParam &node)
+{
+    // 例如，检查形参名是否重复（在函数内部作用域中由 FuncDef 添加）
+    if (symbolTable.lookupInCurrentScope(node.name_) != nullptr)
+    {
+        errorManager.addError(ErrorLevel::ERROR, 'b', 0, "重复定义函数参数：" + node.name_, ErrorType::SemanticError);
+    }
+    else
+    {
+        auto symbol = std::make_unique<VariableSymbol>();
+        symbol->name_ = node.name_;
+        symbol->symbolType_ = PARAM;
+        symbol->dataType_ = TokenType::KEYWORD_INT;
+        symbol->lineDefined_ = 0;
+        symbol->isConst_ = false;
+        if (!symbolTable.addSymbol(std::move(symbol)))
+        {
+            errorManager.addError(ErrorLevel::ERROR, 'n', 0, "添加函数参数符号失败：" + node.name_, ErrorType::SemanticError);
+        }
+    }
+}
+
+// --- 语句 ---
+// 表达式语句
+void SemanticAnalyzer::visit(ExpStmt &node)
+{
     if (node.exp_)
     {
         node.exp_->accept(*this);
     }
-
-    // 如果函数没有返回值（如 `void` 类型），value_ 设置为特定值（例如 -1）
-    value_ = value_; // 设置返回值
 }
 
+// 语句块
+void SemanticAnalyzer::visit(Block &node)
+{
+    symbolTable.enterScope();
+    for (auto &item : node.items_)
+    {
+        item->accept(*this);
+    }
+    symbolTable.exitScope();
+}
+
+// 块项（声明或语句）
+void SemanticAnalyzer::visit(BlockItem &node)
+{
+    node.item_->accept(*this);
+}
+
+// 赋值语句
+void SemanticAnalyzer::visit(AssignStmt &node)
+{
+    // 检查左值是否定义以及是否为可修改的变量
+    node.lval_->accept(*this);
+    Symbol *symbol = symbolTable.lookup(node.lval_->name_);
+    if (symbol == nullptr)
+    {
+        errorManager.addError(ErrorLevel::ERROR, 'b', 0, "赋值语句中未定义的变量：" + node.lval_->name_, ErrorType::SemanticError);
+    }
+    else if (symbol->symbolType_ == CONSTANT)
+    {
+        errorManager.addError(ErrorLevel::ERROR, 'b', 0, "不能修改常量：" + node.lval_->name_, ErrorType::SemanticError);
+    }
+    // 检查右侧表达式
+    node.exp_->accept(*this);
+}
+
+// If 语句
+void SemanticAnalyzer::visit(IfStmt &node)
+{
+    node.cond_->accept(*this);
+    node.thenBranch_->accept(*this);
+    if (node.elseBranch_)
+    {
+        node.elseBranch_->accept(*this);
+    }
+}
+
+// while 语句
+void SemanticAnalyzer::visit(WhileStmt &node)
+{
+    node.cond_->accept(*this);
+    node.body_->accept(*this);
+}
+
+// return 语句
+void SemanticAnalyzer::visit(ReturnStmt &node)
+{
+    if (node.exp_)
+    {
+        node.exp_->accept(*this);
+    }
+    // 这里还可以检查返回值类型是否与函数声明匹配
+}
+
+// 输入输出语句
 void SemanticAnalyzer::visit(IOStmt &node)
 {
-    if (node.kind == AST::IOStmt::IOKind::Printf)
+    if (node.kind == IOStmt::IOKind::Getint)
     {
-        // 处理 printf 语句
-        // 检查格式字符串和参数是否匹配
+        node.target_->accept(*this);
+        Symbol *symbol = symbolTable.lookup(node.target_->name_);
+        if (symbol == nullptr)
+        {
+            errorManager.addError(ErrorLevel::ERROR, 'b', 0, "getint中未定义的变量：" + node.target_->name_, ErrorType::SemanticError);
+        }
+        if (symbol && symbol->symbolType_ == CONSTANT)
+        {
+            errorManager.addError(ErrorLevel::ERROR, 'b', 0, "不能使用getint修改常量：" + node.target_->name_, ErrorType::SemanticError);
+        }
+    }
+    else
+    { // Printf
         for (auto &arg : node.args_)
         {
-            arg->accept(*this); // 计算每个参数的值
+            arg->accept(*this);
         }
-    }
-    else if (node.kind == AST::IOStmt::IOKind::Getint)
-    {
-        // 处理 getint 语句
-        node.target_->accept(*this); // 计算目标左值
+        // 还可以检查格式字符串与参数个数是否匹配
     }
 }
 
+// --- 表达式 ---
+// 数字字面量
+void SemanticAnalyzer::visit(Number &node)
+{
+    // 数值直接通过，不用做检查
+}
+
+// 左值
 void SemanticAnalyzer::visit(LVal &node)
 {
-    // 在符号表中查找左值
-    auto *varSymbol = symbolTable_.lookup(node.name_);
-    if (!varSymbol)
+    Symbol *symbol = symbolTable.lookup(node.name_);
+    if (symbol == nullptr)
     {
-        std::cerr << "Error: Left value '" << node.name_ << "' not defined.\n";
-        return;
+        errorManager.addError(ErrorLevel::ERROR, 'g', 0,
+                              "使用了未定义的变量：" + node.name_,
+                              ErrorType::SemanticError);
     }
-
-    // 如果是数组，检查下标是否合法
-    if (!node.indices_.empty())
+    else
     {
+        // 如果符号为数组，则检查下标数量
+        if (symbol->symbolType_ == ARRAY)
+        {
+            // 假设 ArraySymbol 在符号表中，需向下转型
+            auto arraySymbol = dynamic_cast<ArraySymbol *>(symbol);
+            if (node.indices_.size() != arraySymbol->dimensions_.size())
+            {
+                errorManager.addError(ErrorLevel::ERROR, 'h', 0,
+                                      "数组下标个数与声明不匹配：" + node.name_,
+                                      ErrorType::SemanticError);
+            }
+            else
+            {
+                // 尝试对每个下标进行常量求值检查，并判断是否越界
+                EvalConstant evaluator;
+                for (size_t i = 0; i < node.indices_.size(); ++i)
+                {
+                    int indexValue = 0;
+                    try
+                    {
+                        indexValue = evaluator.Eval(node.indices_[i].get());
+                    }
+                    catch (std::runtime_error &e)
+                    {
+                        errorManager.addError(ErrorLevel::ERROR, 'i', 0,
+                                              "数组下标不能求值为常量：" + node.name_ + ", " + e.what(),
+                                              ErrorType::SemanticError);
+                    }
+                    if (indexValue < 0 || indexValue >= arraySymbol->dimensions_[i])
+                    {
+                        errorManager.addError(ErrorLevel::ERROR, 'j', 0,
+                                              "数组下标越界：" + node.name_,
+                                              ErrorType::SemanticError);
+                    }
+                }
+            }
+        }
+        // 对于标量变量的访问，仅需检查变量是否存在即可
         for (auto &index : node.indices_)
         {
-            index->accept(*this); // 计算下标
-            // 可以检查数组下标是否越界
+            index->accept(*this);
         }
     }
 }
 
+// 基本表达式
 void SemanticAnalyzer::visit(PrimaryExp &node)
 {
-
-    // 检查主表达式的类型
-    if (std::holds_alternative<std::unique_ptr<AST::LVal>>(node.operand_))
+    if (std::holds_alternative<std::unique_ptr<Exp>>(node.operand_))
     {
-        // 处理左值
-        auto lVal = std::move(std::get<std::unique_ptr<AST::LVal>>(node.operand_));
-        lVal->accept(*this);
+        auto &child = std::get<std::unique_ptr<Exp>>(node.operand_);
+        if (child)
+            child->accept(*this);
     }
-    else if (std::holds_alternative<std::unique_ptr<AST::Number>>(node.operand_))
+    else if (std::holds_alternative<std::unique_ptr<LVal>>(node.operand_))
     {
-        // 处理数字常量
-        auto number = std::move(std::get<std::unique_ptr<AST::Number>>(node.operand_));
-        number->accept(*this);
+        auto &child = std::get<std::unique_ptr<LVal>>(node.operand_);
+        if (child)
+            child->accept(*this);
     }
-    else if (std::holds_alternative<std::unique_ptr<AST::Exp>>(node.operand_))
+    else if (std::holds_alternative<std::unique_ptr<Number>>(node.operand_))
     {
-        // 处理括号内的表达式
-        auto exp = std::move(std::get<std::unique_ptr<AST::Exp>>(node.operand_));
-        exp->accept(*this);
+        auto &child = std::get<std::unique_ptr<Number>>(node.operand_);
+        if (child)
+            child->accept(*this);
     }
 }
 
+// 一元表达式
 void SemanticAnalyzer::visit(UnaryExp &node)
 {
-    node.operand_->accept(*this);
-    // 计算操作数的值
-    int operand = value_;
-    switch (node.op)
+    if (node.operand_)
     {
-    case AST::UnaryExp::Op::Plus:
-        value_ = operand; // 正号
-        break;
-    case AST::UnaryExp::Op::Minus:
-        value_ = -operand; // 负号
-        break;
-    case AST::UnaryExp::Op::Not:
-        value_ = !operand; // 逻辑非
-        break;
-    default:
-        break;
+        node.operand_->accept(*this);
     }
 }
 
+// 加法表达式（同理适用于其他二元表达式）
 void SemanticAnalyzer::visit(AddExp &node)
 {
-    std::move(std::get<std::unique_ptr<Exp>>(node.elements_[0]))->accept(*this); // 计算第一个操作数的值
-    int result = value_;                                                         // 获取左操作数的值
-    for (size_t i = 1; i < node.elements_.size(); i += 2)
+    for (auto &elem : node.elements_)
     {
-        TokenType op = std::get<TokenType>(node.elements_[i]);
-        std::move(std::get<std::unique_ptr<Exp>>(node.elements_[i + 1]))->accept(*this); // 计算第二个操作数的值
-        int right = value_;                                                              // 右操作数的值
-        if (op == TokenType::OPERATOR_PLUS)
+        if (std::holds_alternative<std::unique_ptr<Exp>>(elem))
         {
-            result += right;
+            auto &child = std::get<std::unique_ptr<Exp>>(elem);
+            if (child)
+                child->accept(*this);
         }
-        else if (op == TokenType::OPERATOR_MINUS)
-        {
-            result -= right;
-        }
+        // 运算符的部分一般只作为标记，无需遍历
     }
-    value_ = result; // 最终结果
 }
 
 void SemanticAnalyzer::visit(MulExp &node)
 {
-    std::move(std::get<std::unique_ptr<Exp>>(node.elements_[0]))->accept(*this); // 计算第一个操作数的值
-    int result = value_;                                                         // 获取左操作数的值
-    for (size_t i = 1; i < node.elements_.size(); i += 2)
+    for (auto &elem : node.elements_)
     {
-        TokenType op = std::get<TokenType>(node.elements_[i]);
-        std::move(std::get<std::unique_ptr<Exp>>(node.elements_[i + 1]))->accept(*this); // 计算第一个操作数的值
-        int right = value_;                                                              // 右操作数的值
-        if (op == TokenType::OPERATOR_MULTIPLY)
+        if (std::holds_alternative<std::unique_ptr<Exp>>(elem))
         {
-            result *= right;
-        }
-        else if (op == TokenType::OPERATOR_DIVIDE)
-        {
-            result /= right;
-        }
-        else if (op == TokenType::OPERATOR_MODULO)
-        {
-            result %= right;
+            auto &child = std::get<std::unique_ptr<Exp>>(elem);
+            if (child)
+                child->accept(*this);
         }
     }
-    value_ = result; // 最终结果
 }
 
 void SemanticAnalyzer::visit(LOrExp &node)
 {
-    // 获取第一个操作数的值
-    int left = value_;
-    for (size_t i = 1; i < node.elements_.size(); i += 2)
+    for (auto &elem : node.elements_)
     {
-        TokenType op = std::get<TokenType>(node.elements_[i]);
-        int right = value_; // 计算右操作数的值
-
-        // 如果是逻辑或运算符
-        if (op == TokenType::OPERATOR_LOGICAL_OR)
+        if (std::holds_alternative<std::unique_ptr<Exp>>(elem))
         {
-            left = left || right; // 左右操作数进行逻辑或运算
+            auto &child = std::get<std::unique_ptr<Exp>>(elem);
+            if (child)
+                child->accept(*this);
         }
     }
-    value_ = left; // 最终结果
 }
 
 void SemanticAnalyzer::visit(LAndExp &node)
 {
-    // 获取第一个操作数的值
-    int left = value_;
-    for (size_t i = 1; i < node.elements_.size(); i += 2)
+    for (auto &elem : node.elements_)
     {
-        TokenType op = std::get<TokenType>(node.elements_[i]);
-        int right = value_; // 计算右操作数的值
-
-        // 如果是逻辑与运算符
-        if (op == TokenType::OPERATOR_LOGICAL_AND)
+        if (std::holds_alternative<std::unique_ptr<Exp>>(elem))
         {
-            left = left && right; // 左右操作数进行逻辑与运算
+            auto &child = std::get<std::unique_ptr<Exp>>(elem);
+            if (child)
+                child->accept(*this);
         }
     }
-    value_ = left; // 最终结果
 }
 
 void SemanticAnalyzer::visit(EqExp &node)
 {
-    // 获取第一个操作数的值
-    int left = value_;
-    for (size_t i = 1; i < node.elements_.size(); i += 2)
+    for (auto &elem : node.elements_)
     {
-        TokenType op = std::get<TokenType>(node.elements_[i]);
-        int right = value_; // 计算右操作数的值
-
-        // 如果是相等操作符
-        if (op == TokenType::OPERATOR_EQUAL)
+        if (std::holds_alternative<std::unique_ptr<Exp>>(elem))
         {
-            left = (left == right); // 左右操作数进行相等判断
-        }
-        // 如果是不等操作符
-        else if (op == TokenType::OPERATOR_NOT_EQUAL)
-        {
-            left = (left != right); // 左右操作数进行不等判断
+            auto &child = std::get<std::unique_ptr<Exp>>(elem);
+            if (child)
+                child->accept(*this);
         }
     }
-    value_ = left; // 最终结果
 }
 
 void SemanticAnalyzer::visit(RelExp &node)
 {
-    // 获取第一个操作数的值
-    int left = value_;
-    for (size_t i = 1; i < node.elements_.size(); i += 2)
+    for (auto &elem : node.elements_)
     {
-        TokenType op = std::get<TokenType>(node.elements_[i]);
-        int right = value_; // 计算右操作数的值
-
-        // 如果是小于操作符
-        if (op == TokenType::OPERATOR_LESS)
+        if (std::holds_alternative<std::unique_ptr<Exp>>(elem))
         {
-            left = (left < right);
-        }
-        // 如果是大于操作符
-        else if (op == TokenType::OPERATOR_GREATER)
-        {
-            left = (left > right);
-        }
-        // 如果是小于等于操作符
-        else if (op == TokenType::OPERATOR_LESS_EQUAL)
-        {
-            left = (left <= right);
-        }
-        // 如果是大于等于操作符
-        else if (op == TokenType::OPERATOR_GREATER_EQUAL)
-        {
-            left = (left >= right);
+            auto &child = std::get<std::unique_ptr<Exp>>(elem);
+            if (child)
+                child->accept(*this);
         }
     }
-    value_ = left; // 最终结果
 }
 
+// 函数调用表达式
 void SemanticAnalyzer::visit(CallExp &node)
 {
-    // 查找符号表中是否有定义的函数
-    auto *funcSym = symbolTable_.lookup(node.funcName);
-    if (!funcSym || funcSym->symbolType_ != SymbolType::FUNCTION)
+    Symbol *symbol = symbolTable.lookup(node.funcName);
+    if (symbol == nullptr)
     {
-        std::cerr << "Error: Function '" << node.funcName << "' is not defined.\n";
-        return;
+        errorManager.addError(ErrorLevel::ERROR, 'b', 0, "调用未定义的函数：" + node.funcName, ErrorType::SemanticError);
     }
-
-    // 验证函数参数个数和类型
-    // const auto &func = dynamic_cast<FunctionSymbol *>(funcSym);
-    // if (func->paramTypes_.size() != node.args_.size()) {
-    //     std::cerr << "Error: Function '" << node.funcName << "' called with incorrect number of arguments.\n";
-    //     return;
-    // }
-
-    // 检查每个参数类型是否匹配
-    // for (size_t i = 0; i < func->paramTypes_.size(); ++i) {
-    //     // if (func->paramTypes_[i] != node.args_[i]->getType()) {
-    //     //     std::cerr << "Error: Function '" << node.funcName << "' argument type mismatch.\n";
-    //     //     return;
-    //     // }
-    // }
-
-    // 如果所有检查通过，设置该函数调用的返回类型（可选，取决于需求）
-    // value_ = func->getReturnType();  // 假设 `FunctionSymbol` 有 `getReturnType()` 方法
-}
-
-void SemanticAnalyzer::visit(Number &node)
-{
-    value_ = node.value_; // 直接存储数字值
-}
-
-void SemanticAnalyzer::visit(FuncParam &node)
-{
-    // 假设你有对函数参数类型的验证需求，或者你需要检查参数在符号表中的记录：
-    // 示例：检查是否有重复参数名
-    if (symbolTable_.lookup(node.name_))
+    else if (symbol->symbolType_ != FUNCTION)
     {
-        std::cerr << "Error: Parameter '" << node.name_ << "' already defined.\n";
+        errorManager.addError(ErrorLevel::ERROR, 'b', 0, "标识符不是函数：" + node.funcName, ErrorType::SemanticError);
     }
-
-    // 将参数类型和名称加入符号表
-    auto symbol = std::make_unique<VariableSymbol>();
-    symbol->name_ = node.name_;
-    symbol->symbolType_ = SymbolType::VARIABLE;
-    symbol->dataType_ = node.bType_->typeName_ == "int" ? TokenType::KEYWORD_INT : TokenType::KEYWORD_VOID; // 假设 `bType_` 存储类型
-    symbolTable_.addSymbol(std::move(symbol));
-}
-
-void SemanticAnalyzer::visit(FuncDef &node)
-{
-    // 检查函数是否已经定义
-    if (symbolTable_.lookup(node.name_))
+    for (auto &arg : node.args_)
     {
-        std::cerr << "Error: Function '" << node.name_ << "' already defined.\n";
-        return;
-    }
-
-    // 将函数名、返回类型添加到符号表
-    auto funcSymbol = std::make_unique<FunctionSymbol>();
-    funcSymbol->name_ = node.name_;
-    funcSymbol->symbolType_ = SymbolType::FUNCTION;
-    // funcSymbol->returnType_ = node.returnType_->typeName_=="int"?TokenType::KEYWORD_INT:TokenType::KEYWORD_VOID;;  // 假设 `returnType_` 存储类型
-    symbolTable_.addSymbol(std::move(funcSymbol));
-
-    // 处理函数参数
-    for (auto &param : node.params_)
-    {
-        param->accept(*this); // 调用 visit 方法来处理每个参数
-    }
-
-    // 处理函数体
-    node.body_->accept(*this);
-}
-
-void SemanticAnalyzer::visit(MainFuncDef &node)
-{
-    // 检查主函数是否已定义
-    if (!symbolTable_.lookup("main"))
-    {
-        std::cerr << "Error: Main function already defined.\n";
-        return;
-    }
-
-    // 处理主函数体
-    node.body_->accept(*this);
-}
-
-void SemanticAnalyzer::visit(BType &node)
-{
-    // 检查并记录类型（如 int、void 等）
-    if (node.typeName_ == "int")
-    {
-        value_ = 0; // 假设 int 默认值为 0
-    }
-    else if (node.typeName_ == "void")
-    {
-        value_ = -1; // 假设 void 类型没有返回值
-    }
-    else
-    {
-        std::cerr << "Error: Unknown type '" << node.typeName_ << "'\n";
+        arg->accept(*this);
     }
 }
 
-// 处理常量初始化值（可能是单个常量或数组）
-void SemanticAnalyzer::visit(InitVal &node)
+void SemanticAnalyzer::visit(FuncType &)
 {
-    if (std::holds_alternative<std::unique_ptr<AST::Exp>>(node.value_))
+}
+
+// --- 辅助函数 ---
+// 这里给出简单的常量表达式求值示例（实际情况可能复杂得多）
+int SemanticAnalyzer::evaluateConstExp(ConstInitVal *initVal)
+{
+    // 如果是单个表达式，则尝试递归求值
+    if (std::holds_alternative<std::unique_ptr<Exp>>(initVal->value_))
     {
-        // 如果是单个常量表达式
-        auto exp = std::move(std::get<std::unique_ptr<AST::Exp>>(node.value_));
-        exp->accept(*this);
-    }
-    else
-    {
-        // 如果是数组初始化（递归处理数组元素）
-        int total = value_;
-        for (auto &elem : std::get<std::vector<std::unique_ptr<AST::InitVal>>>(node.value_))
+        // 例如：如果该表达式仅为数字字面量，则返回其值
+        auto &expPtr = std::get<std::unique_ptr<Exp>>(initVal->value_);
+        if (expPtr)
         {
-            elem->accept(*this);
-            total += value_;
-        }
-        value_ = total; // 计算数组的总和或其他值
-    }
-}
-
-void SemanticAnalyzer::visit(ConstInitVal &node)
-{
-    if (std::holds_alternative<std::unique_ptr<AST::Exp>>(node.value_))
-    {
-        auto exp = std::move(std::get<std::unique_ptr<AST::Exp>>(node.value_));
-        exp->accept(*this);
-    }
-    else
-    {
-        for (auto &elem : std::get<std::vector<std::unique_ptr<AST::ConstInitVal>>>(node.value_))
-        {
-            elem->accept(*this);
+            // 此处仅作演示，假定 Exp 最终能返回 Number 的值
+            // 你可以实现一个专门的常量求值器
+            return evaluateExp(expPtr.get());
         }
     }
+    // 数组初始化或其他情况暂返回0
+    return 0;
 }
 
-void SemanticAnalyzer::visit(BlockItem &node)
+// 简单表达式求值（仅作示例，实际需完整支持运算）
+int SemanticAnalyzer::evaluateExp(Node *node)
 {
-    node.item_->accept(*this);
+    return evalConstant.Eval(node);
+}
+
+bool SemanticAnalyzer::checkAndEvaluateInitList(const std::vector<std::unique_ptr<InitVal>> &initList,
+                                                const std::vector<int> &dimensions,
+                                                size_t currentDim,
+                                                EvalConstant &evaluator,
+                                                std::vector<int> &evaluatedValues,
+                                                ErrorManager &errorManager,
+                                                const std::string &varName)
+{
+    // 当前层次应有 dimensions[currentDim] 个元素
+    if (initList.size() != dimensions[currentDim])
+    {
+        errorManager.addError(ErrorLevel::ERROR, 'k', 0,
+                              "数组初始化列表第" + std::to_string(currentDim + 1) +
+                                  "维元素数量与声明不匹配：" + varName,
+                              ErrorType::SemanticError);
+        return false;
+    }
+    // 如果是最后一维，则列表中每个元素都应为单个表达式，可以求值
+    if (currentDim == dimensions.size() - 1)
+    {
+        for (auto &elem : initList)
+        {
+            try
+            {
+                int value = evaluator.Eval(elem.get());
+                evaluatedValues.push_back(value);
+            }
+            catch (std::runtime_error &e)
+            {
+                errorManager.addError(ErrorLevel::ERROR, 'l', 0,
+                                      "数组初始化元素求值失败：" + varName + ", " + e.what(),
+                                      ErrorType::SemanticError);
+                return false;
+            }
+        }
+    }
+    else
+    {
+        // 对于非最后一维，期望每个元素为嵌套的初始化列表
+        for (auto &elem : initList)
+        {
+            // 判断是否为列表
+            if (std::holds_alternative<std::vector<std::unique_ptr<InitVal>>>(elem->value_))
+            {
+                auto &subList = std::get<std::vector<std::unique_ptr<InitVal>>>(elem->value_);
+                if (!checkAndEvaluateInitList(subList, dimensions, currentDim + 1,
+                                              evaluator, evaluatedValues, errorManager, varName))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                errorManager.addError(ErrorLevel::ERROR, 'm', 0,
+                                      "数组初始化列表嵌套错误：" + varName,
+                                      ErrorType::SemanticError);
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool SemanticAnalyzer::checkAndEvaluateConstInitList(const std::vector<std::unique_ptr<ConstInitVal>> &initList,
+                                   const std::vector<int> &dimensions,
+                                   size_t currentDim,
+                                   EvalConstant &evaluator,
+                                   std::vector<int> &evaluatedValues,
+                                   ErrorManager &errorManager,
+                                   const std::string &varName)
+{
+    // 当前层次应有 dimensions[currentDim] 个元素
+    if (initList.size() != dimensions[currentDim])
+    {
+        errorManager.addError(ErrorLevel::ERROR, 'k', 0,
+                              "常量数组初始化列表第" + std::to_string(currentDim + 1) +
+                                  "维元素数量与声明不匹配：" + varName,
+                              ErrorType::SemanticError);
+        return false;
+    }
+    // 如果是最后一维，则列表中每个元素都应为单个表达式，可以求值
+    if (currentDim == dimensions.size() - 1)
+    {
+        for (auto &elem : initList)
+        {
+            try
+            {
+                int value = evaluator.Eval(elem.get());
+                evaluatedValues.push_back(value);
+            }
+            catch (std::runtime_error &e)
+            {
+                errorManager.addError(ErrorLevel::ERROR, 'l', 0,
+                                      "常量数组初始化元素求值失败：" + varName + ", " + e.what(),
+                                      ErrorType::SemanticError);
+                return false;
+            }
+        }
+    }
+    else
+    {
+        // 对于非最后一维，期望每个元素为嵌套的初始化列表
+        for (auto &elem : initList)
+        {
+            // 判断是否为列表
+            if (std::holds_alternative<std::vector<std::unique_ptr<ConstInitVal>>>(elem->value_))
+            {
+                auto &subList = std::get<std::vector<std::unique_ptr<ConstInitVal>>>(elem->value_);
+                if (!checkAndEvaluateConstInitList(subList, dimensions, currentDim + 1,
+                                                   evaluator, evaluatedValues, errorManager, varName))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                errorManager.addError(ErrorLevel::ERROR, 'm', 0,
+                                      "常量数组初始化列表嵌套错误：" + varName,
+                                      ErrorType::SemanticError);
+                return false;
+            }
+        }
+    }
+    return true;
 }

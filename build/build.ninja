@@ -76,7 +76,7 @@ build cmake_object_order_depends_target_CCL: phony || CMakeFiles/CCL.dir
 build CMakeFiles/CCL.dir/src/main.cpp.o: CXX_COMPILER__CCL_Debug /home/lin/CCl/src/main.cpp || cmake_object_order_depends_target_CCL
   DEFINES = -DGTEST_HAS_RTTI=0
   DEP_FILE = CMakeFiles/CCL.dir/src/main.cpp.o.d
-  FLAGS = -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions
+  FLAGS = -frtti -g  -fno-exceptions -funwind-tables -fno-rtti -frtti -fexceptions
   INCLUDES = -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include
   OBJECT_DIR = CMakeFiles/CCL.dir
   OBJECT_FILE_DIR = CMakeFiles/CCL.dir/src
@@ -84,7 +84,7 @@ build CMakeFiles/CCL.dir/src/main.cpp.o: CXX_COMPILER__CCL_Debug /home/lin/CCl/s
 build CMakeFiles/CCL.dir/src/lexer.cpp.o: CXX_COMPILER__CCL_Debug /home/lin/CCl/src/lexer.cpp || cmake_object_order_depends_target_CCL
   DEFINES = -DGTEST_HAS_RTTI=0
   DEP_FILE = CMakeFiles/CCL.dir/src/lexer.cpp.o.d
-  FLAGS = -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions
+  FLAGS = -frtti -g  -fno-exceptions -funwind-tables -fno-rtti -frtti -fexceptions
   INCLUDES = -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include
   OBJECT_DIR = CMakeFiles/CCL.dir
   OBJECT_FILE_DIR = CMakeFiles/CCL.dir/src
@@ -92,15 +92,7 @@ build CMakeFiles/CCL.dir/src/lexer.cpp.o: CXX_COMPILER__CCL_Debug /home/lin/CCl/
 build CMakeFiles/CCL.dir/src/parser.cpp.o: CXX_COMPILER__CCL_Debug /home/lin/CCl/src/parser.cpp || cmake_object_order_depends_target_CCL
   DEFINES = -DGTEST_HAS_RTTI=0
   DEP_FILE = CMakeFiles/CCL.dir/src/parser.cpp.o.d
-  FLAGS = -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions
-  INCLUDES = -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include
-  OBJECT_DIR = CMakeFiles/CCL.dir
-  OBJECT_FILE_DIR = CMakeFiles/CCL.dir/src
-
-build CMakeFiles/CCL.dir/src/codeGenerator.cpp.o: CXX_COMPILER__CCL_Debug /home/lin/CCl/src/codeGenerator.cpp || cmake_object_order_depends_target_CCL
-  DEFINES = -DGTEST_HAS_RTTI=0
-  DEP_FILE = CMakeFiles/CCL.dir/src/codeGenerator.cpp.o.d
-  FLAGS = -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions
+  FLAGS = -frtti -g  -fno-exceptions -funwind-tables -fno-rtti -frtti -fexceptions
   INCLUDES = -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include
   OBJECT_DIR = CMakeFiles/CCL.dir
   OBJECT_FILE_DIR = CMakeFiles/CCL.dir/src
@@ -108,15 +100,7 @@ build CMakeFiles/CCL.dir/src/codeGenerator.cpp.o: CXX_COMPILER__CCL_Debug /home/
 build CMakeFiles/CCL.dir/src/symbolTable.cpp.o: CXX_COMPILER__CCL_Debug /home/lin/CCl/src/symbolTable.cpp || cmake_object_order_depends_target_CCL
   DEFINES = -DGTEST_HAS_RTTI=0
   DEP_FILE = CMakeFiles/CCL.dir/src/symbolTable.cpp.o.d
-  FLAGS = -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions
-  INCLUDES = -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include
-  OBJECT_DIR = CMakeFiles/CCL.dir
-  OBJECT_FILE_DIR = CMakeFiles/CCL.dir/src
-
-build CMakeFiles/CCL.dir/src/SymbolTypeBuilder.cpp.o: CXX_COMPILER__CCL_Debug /home/lin/CCl/src/SymbolTypeBuilder.cpp || cmake_object_order_depends_target_CCL
-  DEFINES = -DGTEST_HAS_RTTI=0
-  DEP_FILE = CMakeFiles/CCL.dir/src/SymbolTypeBuilder.cpp.o.d
-  FLAGS = -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions
+  FLAGS = -frtti -g  -fno-exceptions -funwind-tables -fno-rtti -frtti -fexceptions
   INCLUDES = -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include
   OBJECT_DIR = CMakeFiles/CCL.dir
   OBJECT_FILE_DIR = CMakeFiles/CCL.dir/src
@@ -124,7 +108,23 @@ build CMakeFiles/CCL.dir/src/SymbolTypeBuilder.cpp.o: CXX_COMPILER__CCL_Debug /h
 build CMakeFiles/CCL.dir/src/SemanticAnalyzer.cpp.o: CXX_COMPILER__CCL_Debug /home/lin/CCl/src/SemanticAnalyzer.cpp || cmake_object_order_depends_target_CCL
   DEFINES = -DGTEST_HAS_RTTI=0
   DEP_FILE = CMakeFiles/CCL.dir/src/SemanticAnalyzer.cpp.o.d
-  FLAGS = -fexceptions -frtti -g   -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS   -funwind-tables -fno-rtti -fexceptions
+  FLAGS = -frtti -g  -fno-exceptions -funwind-tables -fno-rtti -frtti -fexceptions
+  INCLUDES = -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include
+  OBJECT_DIR = CMakeFiles/CCL.dir
+  OBJECT_FILE_DIR = CMakeFiles/CCL.dir/src
+
+build CMakeFiles/CCL.dir/src/evalConstant.cpp.o: CXX_COMPILER__CCL_Debug /home/lin/CCl/src/evalConstant.cpp || cmake_object_order_depends_target_CCL
+  DEFINES = -DGTEST_HAS_RTTI=0
+  DEP_FILE = CMakeFiles/CCL.dir/src/evalConstant.cpp.o.d
+  FLAGS = -frtti -g  -fno-exceptions -funwind-tables -fno-rtti -frtti -fexceptions
+  INCLUDES = -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include
+  OBJECT_DIR = CMakeFiles/CCL.dir
+  OBJECT_FILE_DIR = CMakeFiles/CCL.dir/src
+
+build CMakeFiles/CCL.dir/src/codeGenerator.cpp.o: CXX_COMPILER__CCL_Debug /home/lin/CCl/src/codeGenerator.cpp || cmake_object_order_depends_target_CCL
+  DEFINES = -DGTEST_HAS_RTTI=0
+  DEP_FILE = CMakeFiles/CCL.dir/src/codeGenerator.cpp.o.d
+  FLAGS = -frtti -g  -fno-exceptions -funwind-tables -fno-rtti -frtti -fexceptions
   INCLUDES = -I/home/lin/llvm_project_1706/llvm_install_dir/include -I/home/lin/CCl/include
   OBJECT_DIR = CMakeFiles/CCL.dir
   OBJECT_FILE_DIR = CMakeFiles/CCL.dir/src
@@ -137,8 +137,8 @@ build CMakeFiles/CCL.dir/src/SemanticAnalyzer.cpp.o: CXX_COMPILER__CCL_Debug /ho
 #############################################
 # Link the executable ../bin/CCL
 
-build ../bin/CCL: CXX_EXECUTABLE_LINKER__CCL_Debug CMakeFiles/CCL.dir/src/main.cpp.o CMakeFiles/CCL.dir/src/lexer.cpp.o CMakeFiles/CCL.dir/src/parser.cpp.o CMakeFiles/CCL.dir/src/codeGenerator.cpp.o CMakeFiles/CCL.dir/src/symbolTable.cpp.o CMakeFiles/CCL.dir/src/SymbolTypeBuilder.cpp.o CMakeFiles/CCL.dir/src/SemanticAnalyzer.cpp.o | /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMipsCodeGen.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMipsAsmParser.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMipsDesc.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMipsInfo.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMX86CodeGen.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMX86AsmParser.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMX86Desc.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMX86Info.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMCore.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMC.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMTargetParser.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMSupport.so.17
-  FLAGS = -fexceptions -frtti -g
+build ../bin/CCL: CXX_EXECUTABLE_LINKER__CCL_Debug CMakeFiles/CCL.dir/src/main.cpp.o CMakeFiles/CCL.dir/src/lexer.cpp.o CMakeFiles/CCL.dir/src/parser.cpp.o CMakeFiles/CCL.dir/src/symbolTable.cpp.o CMakeFiles/CCL.dir/src/SemanticAnalyzer.cpp.o CMakeFiles/CCL.dir/src/evalConstant.cpp.o CMakeFiles/CCL.dir/src/codeGenerator.cpp.o | /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMipsCodeGen.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMipsAsmParser.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMipsDesc.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMipsInfo.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMX86CodeGen.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMX86AsmParser.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMX86Desc.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMX86Info.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMCore.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMC.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMTargetParser.so.17 /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMSupport.so.17
+  FLAGS = -frtti -g
   LINK_FLAGS = -Wl,-rpath-link,  -Wl,--gc-sections
   LINK_LIBRARIES = -Wl,-rpath,"\$$ORIGIN/../lib:/home/lin/llvm_project_1706/llvm_install_dir/lib"  /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMipsCodeGen.so.17  /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMipsAsmParser.so.17  /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMipsDesc.so.17  /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMipsInfo.so.17  /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMX86CodeGen.so.17  /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMX86AsmParser.so.17  /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMX86Desc.so.17  /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMX86Info.so.17  /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMCore.so.17  /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMMC.so.17  /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMTargetParser.so.17  /home/lin/llvm_project_1706/llvm_install_dir/lib/libLLVMSupport.so.17  -Wl,-rpath-link,/home/lin/llvm_project_1706/llvm_install_dir/lib
   OBJECT_DIR = CMakeFiles/CCL.dir

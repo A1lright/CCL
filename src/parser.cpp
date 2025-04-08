@@ -50,22 +50,6 @@ std::unique_ptr<ConstDecl> Parser::parseConstDecl()
     do
     {
         auto const_def = parseConstDef();
-        // 创建变量符号对象
-        auto var_symbol = std::make_unique<VariableSymbol>();
-        var_symbol->name_ = const_def->name_;
-        var_symbol->symbolType_ = SymbolType::VARIABLE;
-        var_symbol->dataType_ = TokenType::KEYWORD_INT;
-        var_symbol->lineDefined_ = token_.line_;
-        var_symbol->columnDefined_ = 0;
-        var_symbol->isConst_ = true;
-        var_symbol->isArray_ = const_def->dimensions_.size() > 0;
-        var_symbol->dimensions_ = std::vector<int>(); /* TODO: 填充数组维度信息 */
-        var_symbol->initValue_.intValue = const_def->hasInit ? value_ : 0;
-
-        // 将符号插入符号表
-        if (!symbolTable_.addSymbol(std::move(var_symbol)))
-        {
-        }
 
         const_decl->constDefs_.push_back(std::move(const_def));
     } while (match(TokenType::PUNCTUATION_COMMA));
@@ -106,23 +90,6 @@ std::unique_ptr<VarDecl> Parser::parseVarDecl()
     do
     {
         auto var_def = parseVarDef();
-
-        // 创建变量符号对象
-        auto var_symbol = std::make_unique<VariableSymbol>();
-        var_symbol->name_ = var_def->name_;
-        var_symbol->symbolType_ = SymbolType::VARIABLE;
-        var_symbol->dataType_ = TokenType::KEYWORD_INT;
-        var_symbol->lineDefined_ = token_.line_;
-        var_symbol->columnDefined_ = 0;
-        var_symbol->isConst_ = false;
-        var_symbol->isArray_ = !var_def->constExps_.empty();
-        var_symbol->dimensions_ = std::vector<int>(); /* TODO: 填充数组维度信息 */
-        var_symbol->initValue_.intValue = var_def->hasInit ? value_ : 0;
-
-        // 将符号插入符号表
-        if (!symbolTable_.addSymbol(std::move(var_symbol)))
-        {
-        }
 
         var_decl->varDefs_.push_back(std::move(var_def));
     } while (match(TokenType::PUNCTUATION_COMMA));
@@ -182,38 +149,10 @@ std::unique_ptr<FuncDef> Parser::parseFuncDef()
             // 添加参数类型信息
             paramTypes.push_back(param->bType_->typeName_ == "int" ? TokenType::KEYWORD_INT : TokenType::UNKNOW);
 
-            auto paramSymbol = std::make_unique<VariableSymbol>();
-            paramSymbol->name_ = param->name_;
-            paramSymbol->symbolType_ = SymbolType::VARIABLE;
-            paramSymbol->dataType_ = TokenType::KEYWORD_INT;
-            paramSymbol->lineDefined_ = token_.line_;
-            paramSymbol->columnDefined_ = 0;
-            paramSymbol->isConst_ = false;
-            paramSymbol->isArray_ = !param->dimSizes_.empty();
-            paramSymbol->dimensions_ = std::vector<int>(); /* TODO: 填充数组维度信息 */
-
-            if (!symbolTable_.addSymbol(std::move(paramSymbol)))
-            {
-            }
-
             func_def->params_.push_back(std::move(param));
         } while (match(TokenType::PUNCTUATION_COMMA));
     }
     advance(); // consume ")"
-
-    // 创建函数符号对象并添加到全局符号表
-    auto funcSymbol = std::make_unique<FunctionSymbol>();
-    funcSymbol->name_ = func_def->name_;
-    funcSymbol->symbolType_ = SymbolType::FUNCTION;
-    funcSymbol->dataType_ = func_def->returnType_->typeName_ == "int" ? TokenType::KEYWORD_INT : TokenType::UNKNOW;
-    funcSymbol->lineDefined_ = token_.line_;
-    funcSymbol->columnDefined_ = 0;
-    funcSymbol->paramTypes_ = paramTypes;
-    funcSymbol->hasReturn_ = true;
-
-    if (!symbolTable_.addSymbol(std::move(funcSymbol)))
-    {
-    }
 
     // 解析函数体
     func_def->body_ = parseBlock();
@@ -229,20 +168,6 @@ std::unique_ptr<MainFuncDef> Parser::parseMainFuncDef()
     advance(); // consume ")"
 
     // 将 main 函数符号添加到全局符号表
-    // 创建一个函数符号对象，用于表示 main 函数
-    auto mainFuncSymbol = std::make_unique<FunctionSymbol>();
-    mainFuncSymbol->name_ = "main";
-    mainFuncSymbol->symbolType_ = SymbolType::FUNCTION;
-    mainFuncSymbol->dataType_ = TokenType::KEYWORD_INT; // main 返回 int
-    mainFuncSymbol->lineDefined_ = token_.line_;
-    mainFuncSymbol->columnDefined_ = 0;
-    mainFuncSymbol->hasReturn_ = true; // main 必须有返回值
-    mainFuncSymbol->paramTypes_ = std::vector<TokenType>();
-
-    // 参数列表为空
-    if (!symbolTable_.addSymbol(std::move(mainFuncSymbol)))
-    {
-    }
 
     main_func_def->body_ = parseBlock();
 
@@ -273,8 +198,6 @@ std::unique_ptr<FuncParam> Parser::parseFuncParam()
 
 std::unique_ptr<Block> Parser::parseBlock()
 {
-    // 进入局部作用域
-    symbolTable_.enterScope();
     auto block = std::make_unique<Block>();
     if (check(TokenType::PUNCTUATION_LEFT_BRACE))
     {
@@ -284,10 +207,8 @@ std::unique_ptr<Block> Parser::parseBlock()
             block->items_.push_back(parseBlockItem());
         }
     }
-    // 退出局部作用域
+
     advance(); // consume '}'
-    symbolTable_.addFunctionSymbol("main");
-    symbolTable_.exitScope();
     return block;
 }
 
@@ -314,7 +235,11 @@ std::unique_ptr<BlockItem> Parser::parseBlockItem()
 
 std::unique_ptr<Stmt> Parser::parseStmt()
 {
-    if (isAssignStmt())
+    if (check(TokenType::IDENTIFIER) && peek(1).tokenType_ == TokenType::OPERATOR_ASSIGN && peek(2).tokenType_ == TokenType::KEYWORD_GETINT)
+    {
+        return parseGetintStmt();
+    }
+    else if (isAssignStmt())
     {
         return parseAssignStmt();
     }
@@ -333,10 +258,6 @@ std::unique_ptr<Stmt> Parser::parseStmt()
     else if (match(TokenType::KEYWORD_RETURN))
     {
         return parseReturnStmt();
-    }
-    else if (check(TokenType::IDENTIFIER) && peek(1).tokenType_ == TokenType::OPERATOR_ASSIGN && peek(2).tokenType_ == TokenType::KEYWORD_GETINT)
-    {
-        return parseGetintStmt();
     }
     else if (check(TokenType::KEYWORD_PRINTF))
     {
@@ -605,40 +526,11 @@ std::unique_ptr<PrimaryExp> Parser::parsePrimaryExp()
     return primary_exp;
 }
 
-void Parser::synchronize()
-{
-    advance(); // 跳过当前错误Token
-    // 同步到下一个语句开始处
-    while (!isAtEnd())
-    {
-        if (previous().tokenType_ == TokenType::PUNCTUATION_SEMICOLON)
-            return;
-        switch (peek().tokenType_)
-        {
-        case TokenType::KEYWORD_INT:
-        case TokenType::KEYWORD_VOID:
-        case TokenType::KEYWORD_IF:
-        case TokenType::KEYWORD_WHILE:
-        case TokenType::KEYWORD_RETURN:
-            return;
-        }
-        advance();
-    }
-}
-
 std::unique_ptr<LVal> Parser::parseLVal()
 {
     auto lVal = std::make_unique<LVal>();
     lVal->name_ = token_.value_;
 
-    // 在符号表中查找该标识符
-    Symbol *sym = symbolTable_.lookup(lVal->name_);
-    if (!sym)
-    {
-    }
-    else
-    {
-    }
     advance(); // consume IDENTIFIER
 
     while (match(TokenType::PUNCTUATION_LEFT_BRACKET))
@@ -653,7 +545,6 @@ std::unique_ptr<Number> Parser::parseNumber()
 {
     auto num = std::make_unique<Number>();
     num->value_ = std::stoi(token_.value_);
-    value_ = num->value_;
     advance();
     return num;
 }
@@ -748,13 +639,6 @@ std::unique_ptr<CallExp> Parser::parseCallExp()
 {
     auto call_exp = std::make_unique<CallExp>();
     call_exp->funcName = advance().value_;
-
-    // 在符号表中查找函数
-    Symbol *funcSym = symbolTable_.lookup(call_exp->funcName);
-    if (!funcSym || funcSym->symbolType_ != SymbolType::FUNCTION)
-    {
-        // 报告错误
-    }
 
     advance(); // consume "("
 

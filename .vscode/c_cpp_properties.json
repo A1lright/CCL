@@ -4,7 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/../llvm_project_1706/build/include"
+                "/home/lin/llvm_project_1706/llvm_install_dir/include"
             ],
             "defines": [
                 "__STDC_CONSTANT_MACROS",
@@ -18,7 +18,7 @@
             "compilerArgs": [
                 "-fexceptions",
                 "-g",
-                "-I/home/lin/llvm_project_1706/llvm_install_dir/include",
+                "-frtti",
                 "-I${workspaceFolder}/include"
             ],
             "mergeConfigurations": false,

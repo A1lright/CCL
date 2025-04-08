@@ -1,84 +1,64 @@
 #include "symbolTable.h"
 
-SymbolTable::SymbolTable()
-{
-    // 初始化全局作用域
+// 构造函数：初始化全局作用域，并添加内置函数
+SymbolTable::SymbolTable() {
+    // 建立全局作用域
     enterScope();
     addBuiltinFunctions();
 }
 
-void SymbolTable::enterScope()
-{
-    scopes_.push_back(Scope());
+// 进入新作用域：在作用域栈中压入一个新的空作用域
+void SymbolTable::enterScope() {
+    scopes_.emplace_back();
 }
 
-void SymbolTable::exitScope()
-{
-    if (!scopes_.empty())
-    {
+// 退出当前作用域：弹出作用域栈顶
+void SymbolTable::exitScope() {
+    if (!scopes_.empty()) {
         scopes_.pop_back();
+    } else {
+        std::cerr << "Error: Attempted to exit scope when no scope exists." << std::endl;
     }
 }
 
-bool SymbolTable::addSymbol(std::unique_ptr<Symbol> symbol)
-{
-    if (scopes_.empty())
+// 添加符号到当前作用域，如果当前作用域中已有同名符号，则返回 false
+bool SymbolTable::addSymbol(std::unique_ptr<Symbol> symbol) {
+    if (scopes_.empty()) {
+        std::cerr << "Error: No scope exists to add symbol " << symbol->name_ << std::endl;
         return false;
-
-    auto &current = scopes_.back();
-    if (current.find(symbol->name_) != current.end())
-    {
-
-        ErrorManager::getInstance().addError(ErrorLevel::ERROR, 'b', symbol->lineDefined_, "Symbol '" + symbol->name_ + "' is redefined.", ErrorType::SyntaxError);
-        return false; // 重复定义
     }
-
-    current[symbol->name_] = std::move(symbol);
+    auto &currentScope = scopes_.back();
+    if (currentScope.find(symbol->name_) != currentScope.end()) {
+        // 当前作用域中已存在同名符号，视为重定义错误
+        std::cerr << "Error: Duplicate definition of symbol " << symbol->name_ << std::endl;
+        return false;
+    }
+    currentScope[symbol->name_] = std::move(symbol);
     return true;
 }
 
-Symbol *SymbolTable::lookup(const std::string &name)
-{
-
-    for (auto it = scopes_.rbegin(); it != scopes_.rend(); ++it)
-    {
-        auto entry = it->find(name);
-        if (entry != it->end())
-        {
-            return entry->second.get();
+// 从内到外查找符号：从当前作用域开始逐层向外查找
+Symbol* SymbolTable::lookup(const std::string &name) {
+    for (auto scopeIt = scopes_.rbegin(); scopeIt != scopes_.rend(); ++scopeIt) {
+        auto it = scopeIt->find(name);
+        if (it != scopeIt->end()) {
+            return it->second.get();
         }
     }
     return nullptr;
 }
 
-bool SymbolTable::checkTypeCompatibility(TokenType t1, TokenType t2)
-{
-    // 根据SysY规范实现类型转换规则
-    return t1 == t2 || (t1 == TokenType::KEYWORD_INT && t2 == TokenType::CONSTANT_INTEGER);
-}
-
-bool SymbolTable::checkFunctionArgs(const std::string &funcName, const std::vector<TokenType> &argTypes)
-{
-
-    if (auto sym = lookup(funcName))
-    {
-        if (sym->symbolType_ == FUNCTION)
-        {
-            auto *func = static_cast<FunctionSymbol *>(sym);
-            if (func->paramTypes_.size() != argTypes.size())
-                return false;
-            for (size_t i = 0; i < argTypes.size(); ++i)
-            {
-                if (!checkTypeCompatibility(func->paramTypes_[i], argTypes[i]))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
+// 仅在当前作用域中查找符号
+Symbol* SymbolTable::lookupInCurrentScope(const std::string &name) {
+    if (scopes_.empty()) return nullptr;
+    auto &currentScope = scopes_.back();
+    auto it = currentScope.find(name);
+    if (it != currentScope.end()) {
+        return it->second.get();
     }
-    return false;
+    return nullptr;
 }
+
 
 void SymbolTable::addBuiltinFunctions()
 {
@@ -88,7 +68,6 @@ void SymbolTable::addBuiltinFunctions()
     getintSymbol->symbolType_ = SymbolType::FUNCTION;
     getintSymbol->dataType_ = TokenType::KEYWORD_INT; // 返回 int
     getintSymbol->lineDefined_ = 0;
-    getintSymbol->columnDefined_ = 0;
 
     // 对于 getint，无参数列表，paramTypes_ 为空
     getintSymbol->paramTypes_ = {};
@@ -107,7 +86,6 @@ void SymbolTable::addBuiltinFunctions()
     printfSymbol->symbolType_ = SymbolType::FUNCTION;
     printfSymbol->dataType_ = TokenType::KEYWORD_INT; // 返回 int（按照 C 标准库 printf）
     printfSymbol->lineDefined_ = 0;
-    printfSymbol->columnDefined_ = 0;
     printfSymbol->paramTypes_ = {TokenType::CONSTANT_STRING}; // 第一个参数为格式字符串
     printfSymbol->hasReturn_ = true;
 

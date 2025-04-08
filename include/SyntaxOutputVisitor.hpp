@@ -502,6 +502,12 @@ public:
         outputNonTerminal("PrimaryExp");
     }
 
+    void visit(FuncType &node)
+    {
+        std::cout << node.typeName_ << std::endl;
+        outputNonTerminal("FuncType");
+    }
+
 private:
     std::ostream &os_;
     const std::unordered_set<std::string> skipped_rules_ = {"BlockItem", "Decl", "BType"};
@@ -514,5 +520,7 @@ private:
         }
     }
 };
+
+
 
 #endif // SYNTAXOUTPUTVISITOR_HPP

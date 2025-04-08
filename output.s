@@ -24,16 +24,18 @@ getint:
 	.type	main,@function
 main:
 	.cfi_startproc
-	pushq	%rax
+	pushq	%rbx
 	.cfi_def_cfa_offset 16
+	.cfi_offset %rbx, -16
 	callq	getint@PLT
-	movl	%eax, 4(%rsp)
+	movq	c@GOTPCREL(%rip), %rbx
+	movl	%eax, (%rbx)
 	movl	$.Lfmt.1, %edi
 	movl	%eax, %esi
 	xorl	%eax, %eax
 	callq	printf@PLT
-	movl	4(%rsp), %eax
-	popq	%rcx
+	movl	(%rbx), %eax
+	popq	%rbx
 	.cfi_def_cfa_offset 8
 	retq
 .Lfunc_end1:
@@ -46,7 +48,16 @@ main:
 	.asciz	"%d"
 	.size	.Lfmt, 3
 
+	.type	c,@object
+	.bss
+	.globl	c
+	.p2align	2, 0x0
+c:
+	.long	0
+	.size	c, 4
+
 	.type	.Lfmt.1,@object
+	.section	.rodata.str1.1,"aMS",@progbits,1
 .Lfmt.1:
 	.asciz	"\"%d\""
 	.size	.Lfmt.1, 5

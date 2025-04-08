@@ -1,16 +1,23 @@
 #include "codeGenerator.h"
 #include "codeGenerator.h"
+#include "llvm/Support/Host.h"
+#include "llvm/MC/MCTargetOptions.h"
+#include "llvm/Target/TargetOptions.h"
 
 using namespace llvm;
 
-CodeGenerator::CodeGenerator(SymbolTable &symtab)
-    : symtab_(symtab), builder_(context_), module_(std::make_unique<Module>("SysY_module", context_))
+CodeGenerator::CodeGenerator()
+    : builder_(context_), module_(std::make_unique<Module>("SysY_module", context_))
 {
     createGetintFunction(module_.get(), context_);
+    PushScope();
 }
 
 CodeGenerator::~CodeGenerator()
 {
+    // 清空所有局部作用域
+    while (!localVarMap.empty())
+        PopScope();
 }
 
 void CodeGenerator::generateCode(CompUnit &compUnit)
@@ -19,6 +26,11 @@ void CodeGenerator::generateCode(CompUnit &compUnit)
     // 模块验证
     std::string errStr;
     raw_string_ostream errStream(errStr);
+    if (verifyModule(*module_, &errStream))
+    {
+        errs() << "生成的模块验证失败:\n"
+               << errStream.str();
+    }
 }
 
 //===----------------------------------------------------------------------===//
@@ -57,22 +69,34 @@ void CodeGenerator::visit(VarDecl &node)
 
 void CodeGenerator::visit(ConstDef &node)
 {
-    llvm::Type *intType = llvm::Type::getInt32Ty(context_);
-    // 生成初始化值（此处假设 initVal_ 为单个数值表达式）
-    node.initVal_->accept(*this);
-    llvm::Constant *initConst = dyn_cast<llvm::Constant>(currentValue_);
-    if (!initConst)
+    // 如果是标量常量（没有数组维度信息）
+    if (node.dimensions_.empty())
     {
-        initConst = llvm::ConstantInt::get(intType, 0);
+        // 先生成常量的初始值
+        llvm::Constant *initVal = llvm::ConstantInt::get(builder_.getInt32Ty(), 0);
+        // 如果有初始化表达式，则计算其值
+        // 这里可以调用类似 EvalConstant 的工具函数直接求值，
+        // 但为了简单示例，假定初始值已经通过语义分析保存在 node 内部
+        if (node.hasInit)
+        {
+            // 假定 node.initVal_ 已经是求值后的常量值
+            // 实际中可能需要更复杂的表达式求值过程
+            initVal = llvm::ConstantInt::get(builder_.getInt32Ty(), evalConstant.Eval(node.initVal_.get()));
+        }
+        // 创建全局常量变量，标记为 constant，存放在 module_ 中
+        llvm::GlobalVariable *gVar = new llvm::GlobalVariable(
+            *module_,
+            builder_.getInt32Ty(),
+            /* isConstant */ true,
+            llvm::GlobalValue::ExternalLinkage,
+            initVal,
+            node.name_);
+        // 将生成的变量添加到全局符号映射中
+        AddGlobalVarToMap(gVar, builder_.getInt32Ty(), node.name_);
     }
-    // 创建全局常量变量
-    new GlobalVariable(
-        *module_,
-        intType,
-        true, // 常量
-        GlobalValue::InternalLinkage,
-        initConst,
-        node.name_);
+    else
+    {
+    }
 }
 
 void CodeGenerator::visit(ConstDecl &node)
@@ -87,69 +111,22 @@ void CodeGenerator::visit(ConstDecl &node)
 // 变量定义：生成局部变量的 alloca，并处理初始化
 void CodeGenerator::visit(VarDef &node)
 {
-    Type *ty = Type::getInt32Ty(context_);
-
-    // 在函数入口创建 alloca（更高效的方法是使用一个专门的 alloca 插入点）
-    IRBuilder<> tmpBuilder(&currentFunction->getEntryBlock(), currentFunction->getEntryBlock().begin());
-    llvm::Value *allocaInst = tmpBuilder.CreateAlloca(ty, nullptr, node.name_);
-    //// 更新符号表中变量对应的地址信息
-    Symbol *sym = symtab_.lookup(node.name_);
-    if (!sym)
+    if (node.constExps_.empty())
     {
-        // 如果在活动作用域中找不到，则尝试在当前函数的持久化局部符号中查找
-        std::string funcName = currentFunction->getName().str();
-        sym = symtab_.lookupFunctionSymbol(funcName, node.name_);
+        Constant *initVal = ConstantInt::get(builder_.getInt32Ty(), 0);
+        if (node.hasInit)
+        {
+            // 这里可插入对 initVal 表达式的求值，本示例直接用 0
+            initVal = ConstantInt::get(builder_.getInt32Ty(), 0);
+        }
+        GlobalVariable *gVar = new GlobalVariable(*module_, builder_.getInt32Ty(),
+                                                  false, GlobalValue::ExternalLinkage, initVal, node.name_);
+        // TODO: 添加进局部变量表还是全局表？通过当前函数判定？全局变量整个生命周期都在
+        AddGlobalVarToMap(gVar, builder_.getInt32Ty(), node.name_);
     }
-    if (!sym)
+    else
     {
-        reportError("Undefined variable: " + node.name_, 0);
-        currentValue_ = nullptr;
-        return;
     }
-
-    VariableSymbol *varSym = static_cast<VariableSymbol *>(sym);
-    // varSym->initValue_.intValue = 0; // 默认值
-    //  假设我们用一个额外字段存储 alloca 指针
-    varSym->allocaInst_ = allocaInst;
-
-    // 如果有初始化表达式，则生成初始化代码
-    if (node.hasInit && node.initVal_)
-    {
-        node.initVal_->accept(*this);
-        llvm::Value *initVal = currentValue_;
-        builder_.CreateStore(initVal, allocaInst);
-    }
-
-    // // 处理数组维度
-    // for (auto &dim : node.constExps_)
-    // {
-    //     dim->accept(*this);
-    //     // Value *dimVal = getLastValue();
-    //     // if (auto *CI = dyn_cast<ConstantInt>(dimVal)) {
-    //     //     ty = ArrayType::get(ty, CI->getSExtValue());
-    //     // }
-    // }
-    // // 创建变量
-    // if (currentFunction == nullptr)
-    // { // 全局变量
-    //     GlobalVariable *gvar = new GlobalVariable(
-    //         *module_, ty, false, GlobalValue::CommonLinkage,
-    //         Constant::getNullValue(ty), node.name_);
-    //     if (node.hasInit)
-    //     {
-    //         node.initVal_->accept(*this);
-    //         handleGlobalInit(gvar, *node.initVal_);
-    //     }
-    // }
-    // else
-    // { // 局部变量
-    //     AllocaInst *alloca = builder_.CreateAlloca(ty, nullptr, node.name_);
-    //     if (node.hasInit)
-    //     {
-    //         Value *initVal = generateInitValue(*node.initVal_);
-    //         builder_.CreateStore(initVal, alloca);
-    //     }
-    // }
 }
 
 //===----------------------------------------------------------------------===//
@@ -163,84 +140,43 @@ void CodeGenerator::visit(FuncParam &node)
 
 void CodeGenerator::visit(FuncDef &node)
 {
-    // 生成函数原型和入口基本块
-    std::vector<Type *> paramTypes;
-    for (auto &param : node.params_)
-    {
-        if (param->isArray_)
-            paramTypes.push_back(PointerType::getUnqual(Type::getInt32Ty(context_)));
-        else
-            paramTypes.push_back(Type::getInt32Ty(context_));
-    }
-
-    FunctionType *funcType = FunctionType::get(
-        node.returnType_->typeName_ == "void" ? Type::getVoidTy(context_) : Type::getInt32Ty(context_),
-        paramTypes, false);
-
-    Function *func = Function::Create(
-        funcType, Function::ExternalLinkage,
-        node.name_, module_.get());
-
-    // 设置当前函数上下文
-    currentFunction = func;
-    BasicBlock *entryBB = BasicBlock::Create(context_, "entry", func);
-    builder_.SetInsertPoint(entryBB);
-
-    // 处理形参
-    auto argIter = func->arg_begin();
-    for (auto &param : node.params_)
-    {
-        AllocaInst *alloc = builder_.CreateAlloca(
-            argIter->getType(), nullptr, param->name_);
-        builder_.CreateStore(argIter, alloc);
-
-        Symbol *sym = symtab_.lookup(param->name_);
-        if (sym && sym->symbolType_ == PARAM)
-        {
-            VariableSymbol *varSym = static_cast<VariableSymbol *>(sym);
-            varSym->allocaInst_ = alloc;
-        }
-
-        ++argIter;
-    }
-
-    // 生成函数体
-    node.body_->accept(*this);
-
-    // 处理无return语句的情况
-    if (!verifyTerminator())
-    {
-        if (node.returnType_->typeName_ == "void")
-        {
-            builder_.CreateRetVoid();
-        }
-        else
-        {
-            // reportError("Missing return statement in non-void function", node.body_->line_);
-        }
-    }
-
-    currentFunction = nullptr;
 }
 
 void CodeGenerator::visit(MainFuncDef &node)
 {
-    FunctionType *mainFuncType = FunctionType::get(Type::getInt32Ty(context_), false);
-    Function *mainFunc = Function::Create(mainFuncType, Function::ExternalLinkage, "main", module_.get());
-    currentFunction = mainFunc;
+    // 1. 创建 main 函数：i32 @main()
+    FunctionType *mainTy = FunctionType::get(builder_.getInt32Ty(), {}, false);
+    Function *mainFunc = Function::Create(
+        mainTy, Function::ExternalLinkage, "main", module_.get());
 
-    BasicBlock *entryBB = BasicBlock::Create(context_, "entry", currentFunction);
+    // 2. 创建入口基本块
+    BasicBlock *entryBB = BasicBlock::Create(context_, "entry", mainFunc);
     builder_.SetInsertPoint(entryBB);
 
-    // 生成函数体代码
+    currentFunc_ = mainFunc;
+    // 3. 进入新的局部作用域
+    PushScope();
+
+    // 4. 处理 main 函数体
     node.body_->accept(*this);
 
-    if (!verifyTerminator())
+    // 5. 如果没有终结指令，则添加 `ret i32 0`
+    if (!entryBB->getTerminator())
     {
-        builder_.CreateRet(ConstantInt::get(Type::getInt32Ty(context_), 0));
+        builder_.CreateRet(ConstantInt::get(builder_.getInt32Ty(), 0));
     }
 
-    currentFunction = nullptr;
+    // 6. 验证函数
+    if (verifyFunction(*mainFunc, &errs()))
+    {
+        errs() << "main 函数验证失败！\n";
+    }
+
+    // 7. 弹出作用域
+    PopScope();
+
+    // 8. 将 main 函数记录到全局符号映射（以便可能的递归或外部引用）
+    AddGlobalVarToMap(mainFunc, mainFunc->getType(), "main");
 }
 
 void CodeGenerator::visit(BType &node)
@@ -282,20 +218,27 @@ void CodeGenerator::visit(BlockItem &node)
     node.item_->accept(*this);
 }
 
+void CodeGenerator::visit(FuncType &node)
+{
+}
+
 //===----------------------------------------------------------------------===//
 // 控制流语句
 //===----------------------------------------------------------------------===//
 
-void CodeGenerator::visit(ExpStmt &)
+void CodeGenerator::visit(ExpStmt &node)
 {
+    node.exp_->accept(*this);
 }
 
 void CodeGenerator::visit(Block &node)
 {
+    PushScope();
     for (auto &item : node.items_)
     {
         item->accept(*this);
     }
+    PopScope();
 }
 
 void CodeGenerator::visit(AssignStmt &node)
@@ -309,10 +252,7 @@ void CodeGenerator::visit(AssignStmt &node)
     if (lvalAddr)
     {
         builder_.CreateStore(rhs, lvalAddr);
-    }
-    else
-    {
-        reportError("Invalid assignment target", 0);
+        currentValue_ = rhs;
     }
 }
 
@@ -327,17 +267,14 @@ void CodeGenerator::visit(IfStmt &node)
 
     llvm::Function *function = builder_.GetInsertBlock()->getParent();
     BasicBlock *thenBB = BasicBlock::Create(context_, "then", function);
-    // BasicBlock *elseBB = BasicBlock::Create(context_, "else");
     BasicBlock *elseBB = BasicBlock::Create(context_, "else", function);
-    // BasicBlock *mergeBB = BasicBlock::Create(context_, "ifcont");
     BasicBlock *mergeBB = BasicBlock::Create(context_, "ifcont", function);
     builder_.CreateCondBr(condValue, thenBB, elseBB);
 
     // then 分支
     builder_.SetInsertPoint(thenBB);
     node.thenBranch_->accept(*this);
-    if (!verifyTerminator())
-        builder_.CreateBr(mergeBB);
+    builder_.CreateBr(mergeBB);
     thenBB = builder_.GetInsertBlock();
 
     // else 分支
@@ -345,8 +282,7 @@ void CodeGenerator::visit(IfStmt &node)
     builder_.SetInsertPoint(elseBB);
     if (node.elseBranch_)
         node.elseBranch_->accept(*this);
-    if (!verifyTerminator())
-        builder_.CreateBr(mergeBB);
+    builder_.CreateBr(mergeBB);
     elseBB = builder_.GetInsertBlock();
 
     // 合并分支
@@ -358,10 +294,8 @@ void CodeGenerator::visit(WhileStmt &node)
 {
     Function *function = builder_.GetInsertBlock()->getParent();
     BasicBlock *condBB = BasicBlock::Create(context_, "while.cond", function);
-    // BasicBlock *loopBB = BasicBlock::Create(context_, "while.body");
     BasicBlock *loopBB = BasicBlock::Create(context_, "while.body", function);
     BasicBlock *exitBB = BasicBlock::Create(context_, "while.exit", function);
-    // BasicBlock *exitBB = BasicBlock::Create(context_, "while.exit");
 
     builder_.CreateBr(condBB);
     // 循环条件块
@@ -378,11 +312,8 @@ void CodeGenerator::visit(WhileStmt &node)
     builder_.SetInsertPoint(loopBB);
     builder_.SetInsertPoint(loopBB);
     // 压入循环上下文（用于 break/continue 支持，此处简化）
-    loopStack.push_back({condBB, exitBB});
     node.body_->accept(*this);
-    if (!verifyTerminator())
-        builder_.CreateBr(condBB);
-    loopStack.pop_back();
+    builder_.CreateBr(condBB);
 
     // 循环退出块
 
@@ -416,8 +347,8 @@ void CodeGenerator::visit(IOStmt &node)
         }
         llvm::Value *retVal = builder_.CreateCall(getintFunc, {}, "getintCall");
         // 将读入的值存入目标变量
-        node.target_->accept(*this); // 生成变量指针
-        llvm::Value *targetAddr = currentValue_;
+        node.target_->accept(*this);             // 生成变量指针
+        llvm::Value *targetAddr = currentValue_; // 获取目标地址值
         builder_.CreateStore(retVal, static_cast<AllocaInst *>(targetAddr));
         currentValue_ = retVal;
     }
@@ -447,31 +378,15 @@ void CodeGenerator::visit(IOStmt &node)
 
 void CodeGenerator::visit(LVal &node)
 {
-    Symbol *sym = symtab_.lookup(node.name_);
-    if (!sym)
+    auto varPair = GetVarByName(node.name_);
+    if (!varPair.first)
     {
-        // 如果在活动作用域中找不到，则尝试在当前函数的持久化局部符号中查找
-        std::string funcName = currentFunction->getName().str();
-        sym = symtab_.lookupFunctionSymbol(funcName, node.name_);
-    }
-    if (!sym)
-    {
-        reportError("Undefined variable: " + node.name_, 0);
+        errs() << "未找到变量 " << node.name_ << "\n";
         currentValue_ = nullptr;
         return;
     }
-    VariableSymbol *varSym = static_cast<VariableSymbol *>(sym);
-
-    // 获取变量地址（假设 varSym->allocaInst_ 已在代码生成阶段创建并保存）
-    llvm::Value *varAddr = varSym->allocaInst_;
-    // 如果有数组下标则调用 handleArraySubscript 生成 GEP 指令
-    if (!node.indices_.empty())
-    {
-        varAddr = handleArraySubscript(varAddr, node.indices_);
-    }
-    // 生成 load 指令
-    // currentValue_ = builder_.CreateLoad(Type::getInt32Ty(context_), varAddr, node.name_ + ".load");
-    currentValue_ = varAddr;
+    // 假定变量存放的是指针，需要生成 load
+    currentValue_ = varPair.first;
 }
 
 void CodeGenerator::visit(PrimaryExp &node)
@@ -596,11 +511,9 @@ void CodeGenerator::visit(LOrExp &node)
         resultAll = llvm::ConstantInt::get(llvm::Type::getInt32Ty(context_), 1);
         builder_.CreateBr(mergeBB);
 
-        // function->getBasicBlockList().push_back(falseBB);
         builder_.SetInsertPoint(falseBB);
         builder_.CreateBr(mergeBB);
 
-        // function->getBasicBlockList().push_back(mergeBB);
         builder_.SetInsertPoint(mergeBB);
     }
     currentValue_ = resultAll;
@@ -627,11 +540,9 @@ void CodeGenerator::visit(LAndExp &node)
         resultAll = llvm::ConstantInt::get(llvm::Type::getInt32Ty(context_), 0);
         builder_.CreateBr(mergeBB);
 
-        // function->getBasicBlockList().push_back(trueBB);
         builder_.SetInsertPoint(trueBB);
         builder_.CreateBr(mergeBB);
 
-        // function->getBasicBlockList().push_back(mergeBB);
         builder_.SetInsertPoint(mergeBB);
     }
     currentValue_ = resultAll;
@@ -718,7 +629,6 @@ void CodeGenerator::visit(CallExp &node)
     Function *callee = module_->getFunction(node.funcName);
     if (!callee)
     {
-        reportError("Undefined function: " + node.funcName, 0);
         currentValue_ = nullptr;
         return;
     }
@@ -734,81 +644,6 @@ void CodeGenerator::visit(CallExp &node)
 void CodeGenerator::visit(Number &node)
 {
     currentValue_ = llvm::ConstantInt::get(llvm::Type::getInt32Ty(context_), node.value_);
-}
-
-llvm::Value *CodeGenerator::handleArraySubscript(llvm::Value *base, const std::vector<std::unique_ptr<AST::Exp>> &indices)
-{
-    return nullptr;
-}
-
-void CodeGenerator::handleGlobalInit(GlobalVariable *gvar, const InitVal &initVal)
-{
-    if (auto *list = std::get_if<std::vector<std::unique_ptr<InitVal>>>(&initVal.value_))
-    {
-        std::vector<Constant *> initValues;
-        for (auto &item : *list)
-        {
-            if (auto *subList = std::get_if<std::vector<std::unique_ptr<InitVal>>>(&item->value_))
-            {
-                // 处理嵌套初始化
-            }
-            else
-            {
-                // auto *val = cast<ConstantInt>(std::get<std::unique_ptr<Exp>>(item->value_)->accept(*this));
-                // initValues.push_back(val);
-            }
-        }
-        // gvar->setInitializer(ConstantArray::get(
-        // cast<ArrayType>(gvar->getType()->getPointerElementType()),
-        // initValues));
-    }
-    else
-    {
-        // auto *val = cast<ConstantInt>(std::get<std::unique_ptr<Exp>>(initVal.value_)->accept(*this));
-        // gvar->setInitializer(val);
-    }
-}
-
-llvm::Value *CodeGenerator::generateInitValue(const AST::InitVal &initVal)
-{
-    return nullptr;
-}
-
-llvm::BasicBlock *CodeGenerator::createMergeBlock(const std::string &name)
-{
-    return nullptr;
-}
-
-bool CodeGenerator::verifyTerminator()
-{
-    BasicBlock *bb = builder_.GetInsertBlock();
-    return bb->getTerminator() != nullptr;
-}
-
-void CodeGenerator::reportError(const std::string &msg, int line)
-{
-    errs() << "Error at line " << line << ": " << msg << "\n";
-}
-
-// 格式字符串处理辅助函数
-std::string processFormatString(const std::string &orig)
-{
-    std::string processed;
-    for (size_t i = 0; i < orig.size(); ++i)
-    {
-        if (orig[i] == '\\' && i + 1 < orig.size())
-        {
-            if (orig[i + 1] == 'n')
-            {
-                processed += '\n';
-                ++i;
-                continue;
-            }
-            // 其他转义字符处理（根据规范只有\n合法）
-        }
-        processed += orig[i];
-    }
-    return processed;
 }
 
 // 实现 getint 函数，返回 i32 类型整数，且无参数
@@ -855,126 +690,92 @@ Function *CodeGenerator::createGetintFunction(Module *module, LLVMContext &conte
 
 void CodeGenerator::emitMIPSAssembly(const std::string &outputFilename)
 {
-    // //   1. 只初始化 MIPS 相关的目标，防止 X86 依赖
-    // LLVMInitializeMipsTargetInfo();
-    // LLVMInitializeMipsTarget();
-    // LLVMInitializeMipsTargetMC();
-    // LLVMInitializeMipsAsmParser();
-    // LLVMInitializeMipsAsmPrinter();
-
-    // //   2. 设置 MIPS 目标三元组
-    // std::string targetTriple = "mips-unknown-linux-gnu";
-    // std::string error;
-    // const llvm::Target *target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
-    // if (!target)
+    // std::error_code EC;
+    // raw_fd_ostream out(outputFilename, EC, sys::fs::OF_None);
+    // if (EC)
     // {
-    //     llvm::errs() << "  无法找到 MIPS 目标: " << error << "\n";
+    //     errs() << "无法打开文件: " << EC.message() << "\n";
     //     return;
     // }
+    // module_->print(out, nullptr);
+    // outs() << "LLVM IR 已写入 " << outputFilename << "\n";
+    // 初始化LLVM目标支持
+    InitializeAllTargetInfos();
+    InitializeAllTargets();
+    InitializeAllTargetMCs();
+    InitializeAllAsmParsers();
+    InitializeAllAsmPrinters();
+    std::string targetTriple = sys::getDefaultTargetTriple();
+    module_->setTargetTriple(targetTriple);
 
-    // //   3. 创建 MIPS 目标机器
-    // llvm::TargetOptions options;
-    // std::unique_ptr<llvm::TargetMachine> targetMachine(
-    //     target->createTargetMachine(targetTriple, "mips32", "", options, std::nullopt)); // ✅ 代替 llvm::Reloc::Model::PIC_
-
-    // if (!targetMachine)
-    // {
-    //     llvm::errs() << "  无法创建 MIPS 目标机器！\n";
-    //     return;
-    // }
-
-    // //   4. 确保 module_ 存在
-    // if (!module_)
-    // {
-    //     llvm::errs() << "  错误：LLVM 模块未初始化！\n";
-    //     return;
-    // }
-
-    // //   5. 设置模块的目标三元组和数据布局
-    // module_->setTargetTriple(targetTriple);
-    // module_->setDataLayout(targetMachine->createDataLayout());
-
-    // //   6. 设置输出文件
-    // std::error_code ec;
-    // llvm::raw_fd_ostream dest(outputFilename, ec, llvm::sys::fs::OF_None);
-    // if (ec)
-    // {
-    //     llvm::errs() << "  无法打开输出文件 " << outputFilename << "：" << ec.message() << "\n";
-    //     return;
-    // }
-
-    // //   7. 创建 PassManager 生成 MIPS 汇编
-    // llvm::legacy::PassManager passManager;
-    // if (targetMachine->addPassesToEmitFile(passManager, dest, nullptr, llvm::CodeGenFileType::CGFT_AssemblyFile))
-    // {
-    //     llvm::errs() << "  目标机器无法生成 MIPS 汇编文件！\n";
-    //     return;
-    // }
-
-    // //   8. 运行 PassManager，生成汇编代码
-    // passManager.run(*module_);
-    // dest.flush();
-
-    // llvm::outs() << "✅ MIPS 汇编代码已成功写入：" << outputFilename << "\n";
-    //   1. 只初始化 X86 目标，避免多余依赖
-    LLVMInitializeX86TargetInfo();
-    LLVMInitializeX86Target();
-    LLVMInitializeX86TargetMC();
-    LLVMInitializeX86AsmParser();
-    LLVMInitializeX86AsmPrinter();
-
-    //   2. 设置 X86 目标三元组
-    std::string targetTriple = "x86_64-pc-linux-gnu";
     std::string error;
-    const llvm::Target *target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
+    const Target *target = TargetRegistry::lookupTarget(targetTriple, error);
     if (!target)
     {
-        llvm::errs() << "  无法找到 X86 目标: " << error << "\n";
+        errs() << error;
         return;
     }
 
-    //   3. 创建 X86 目标机器
-    llvm::TargetOptions options;
-    std::unique_ptr<llvm::TargetMachine> targetMachine(
-        target->createTargetMachine(targetTriple, "x86-64", "", options, std::nullopt));
+    TargetOptions opt;
+    auto RM = std::optional<llvm::Reloc::Model>();
+    TargetMachine *targetMachine = target->createTargetMachine(targetTriple, "generic", "", opt, RM);
 
-    if (!targetMachine)
-    {
-        llvm::errs() << "  无法创建 X86 目标机器！\n";
-        return;
-    }
-
-    //   4. 确保 module_ 存在
-    if (!module_)
-    {
-        llvm::errs() << "  错误：LLVM 模块未初始化！\n";
-        return;
-    }
-
-    //   5. 设置模块的目标三元组和数据布局
-    module_->setTargetTriple(targetTriple);
     module_->setDataLayout(targetMachine->createDataLayout());
 
-    //   6. 设置输出文件
-    std::error_code ec;
-    llvm::raw_fd_ostream dest(outputFilename, ec, llvm::sys::fs::OF_None);
-    if (ec)
+    std::error_code EC;
+    raw_fd_ostream dest(outputFilename, EC, sys::fs::OF_None);
+
+    if (EC)
     {
-        llvm::errs() << "  无法打开输出文件 " << outputFilename << "：" << ec.message() << "\n";
+        errs() << "Could not open file: " << EC.message();
         return;
     }
 
-    //   7. 创建 PassManager 生成 X86 汇编
-    llvm::legacy::PassManager passManager;
-    if (targetMachine->addPassesToEmitFile(passManager, dest, nullptr, llvm::CodeGenFileType::CGFT_AssemblyFile))
+    legacy::PassManager pass;
+    if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, CodeGenFileType::CGFT_AssemblyFile))
     {
-        llvm::errs() << "  目标机器无法生成 X86 汇编文件！\n";
+        errs() << "TargetMachine can't emit a file of this type";
         return;
     }
 
-    //   8. 运行 PassManager，生成汇编代码
-    passManager.run(*module_);
+    pass.run(*module_);
     dest.flush();
+}
 
-    llvm::outs() << "✅ X86 汇编代码已成功写入：" << outputFilename << "\n";
+void CodeGenerator::AddLocalVarToMap(llvm::Value *addr, llvm::Type *ty, llvm::StringRef name)
+{
+    localVarMap.back().insert({name, {addr, ty}});
+}
+
+void CodeGenerator::AddGlobalVarToMap(llvm::Value *addr, llvm::Type *ty, llvm::StringRef name)
+{
+    globalVarMap.insert({name, {addr, ty}});
+}
+
+std::pair<llvm::Value *, llvm::Type *> CodeGenerator::GetVarByName(llvm::StringRef name)
+{
+    for (auto it = localVarMap.rbegin(); it != localVarMap.rend(); ++it)
+    {
+        if (it->find(name) != it->end())
+        {
+            return (*it)[name];
+        }
+    }
+    assert(globalVarMap.find(name) != globalVarMap.end());
+    return globalVarMap[name];
+}
+
+void CodeGenerator::PushScope()
+{
+    localVarMap.emplace_back();
+}
+
+void CodeGenerator::PopScope()
+{
+    localVarMap.pop_back();
+}
+
+void CodeGenerator::ClearVarScope()
+{
+    localVarMap.clear();
 }

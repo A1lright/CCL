@@ -2,7 +2,6 @@
 #ifndef SYSY_ASTSYSY_H
 #define SYSY_ASTSYSY_H
 
-#pragma once
 #include <memory>
 #include "lexer.h"
 #include <vector>
@@ -17,6 +16,47 @@ namespace AST
     class Node
     {
     public:
+        enum Kind
+        {
+            ND_Decl,
+            ND_Exp,
+            ND_Stmt,
+            ND_CompUnit,
+            ND_ConstDef,
+            ND_ConstDecl,
+            ND_VarDef,
+            ND_VarDecl,
+            ND_FuncParam,
+            ND_FuncDef,
+            ND_MainFuncDef,
+            ND_BlockItem,
+            ND_ExpStmt,
+            ND_AssignStmt,
+            ND_IfStmt,
+            ND_WhileStmt,
+            ND_ReturnStmt,
+            ND_IOStmt,
+            ND_LVal,
+            ND_PrimaryExp,
+            ND_UnaryExp,
+            ND_AddExp,
+            ND_MulExp,
+            ND_LOrExp,
+            ND_LAndExp,
+            ND_EqExp,
+            ND_RelExp,
+            ND_CallExp,
+            ND_Number,
+            ND_BType,
+            ND_FuncType,
+            ND_InitVal,
+            ND_ConstInitVal,
+            ND_Block,
+        };
+        Kind kind_;
+        Node(Kind kind) : kind_(kind) {}
+        Kind getKind() const { return kind_; }
+
         virtual ~Node() = default;
         virtual void accept(Visitor &visitor) = 0;
     };
@@ -24,16 +64,22 @@ namespace AST
     // 声明基类
     class Decl : public Node
     {
+    public:
+        Decl(Kind kind) : Node(kind) {}
     };
 
     // 表达式基类
     class Exp : public Node
     {
+    public:
+        Exp(Kind kind) : Node(kind) {}
     };
 
     // 语句基类
     class Stmt : public Node
     {
+    public:
+        Stmt(Kind kind) : Node(kind) {}
     };
 
     // 声明节点
@@ -46,9 +92,10 @@ namespace AST
     class FuncParam;   // 函数形参（int a[] 或 int a[2][3]）
     class FuncDef;     // 函数定义（int func(int a, int b[]) { ... }）
     class MainFuncDef; // 主函数定义（int main() { ... }）
+    class FuncType; // 函数返回类型（int 或 void）
 
     // 语句节点
-    class ExpStmt;   // 表达式语句（exp;）
+    class ExpStmt;    // 表达式语句（exp;）
     class Block;      // 语句块（{ ... }）
     class AssignStmt; // 赋值语句（a = 5;）
     class IfStmt;     // if语句（if (cond) stmt [else stmt]）
@@ -100,7 +147,7 @@ namespace AST
         virtual void visit(ConstInitVal &) = 0;
 
         // 语句
-       
+
         virtual void visit(ExpStmt &) = 0;
         virtual void visit(Block &) = 0;
         virtual void visit(BlockItem &) = 0;
@@ -127,11 +174,14 @@ namespace AST
         virtual void visit(FuncParam &) = 0;
         virtual void visit(FuncDef &) = 0;
         virtual void visit(MainFuncDef &) = 0;
+        virtual void visit(FuncType &) = 0;
     };
 
     class CompUnit : public Node
     {
     public:
+        CompUnit() : Node(ND_CompUnit) {}
+
         std::vector<std::unique_ptr<Decl>> decls_;       // 全局声明（变量/常量）
         std::vector<std::unique_ptr<FuncDef>> funcDefs_; // 函数定义
         std::unique_ptr<MainFuncDef> mainfuncDef_;       // 主函数
@@ -147,6 +197,8 @@ namespace AST
     class ConstDecl : public Decl
     {
     public:
+        ConstDecl() : Decl(ND_ConstDecl) {}
+
         std::unique_ptr<BType> bType_;
         std::vector<std::unique_ptr<ConstDef>> constDefs_;
 
@@ -160,6 +212,7 @@ namespace AST
     class ConstDef : public Node
     {
     public:
+        ConstDef() : Node(ND_ConstDef) {}
         std::string name_;
         std::vector<std::unique_ptr<Exp>> dimensions_;
         std::unique_ptr<ConstInitVal> initVal_;
@@ -175,6 +228,7 @@ namespace AST
     class VarDecl : public Decl
     {
     public:
+        VarDecl() : Decl(ND_VarDecl) {}
         std::unique_ptr<BType> bType_;
         std::vector<std::unique_ptr<VarDef>> varDefs_;
 
@@ -187,6 +241,7 @@ namespace AST
     class BType : public Node
     {
     public:
+        BType() : Node(ND_BType) {}
         std::string typeName_{"int"};
 
         void accept(Visitor &v) override
@@ -199,6 +254,7 @@ namespace AST
     class VarDef : public Node
     {
     public:
+        VarDef() : Node(ND_VarDef) {}
         std::string name_;
         std::vector<std::unique_ptr<Exp>> constExps_;
         std::unique_ptr<InitVal> initVal_; // 可为空
@@ -215,6 +271,7 @@ namespace AST
     class FuncParam : public Node
     {
     public:
+        FuncParam() : Node(ND_FuncParam) {}
         std::unique_ptr<BType> bType_;
         std::string name_;
         std::vector<std::unique_ptr<Exp>> dimSizes_; // 数组维度（第一维可缺）Exp指向 BinaryAdd
@@ -230,6 +287,7 @@ namespace AST
     class MainFuncDef : public Node
     {
     public:
+        MainFuncDef() : Node(ND_MainFuncDef) {}
         std::unique_ptr<Block> body_;
 
         void accept(Visitor &v) override
@@ -242,6 +300,7 @@ namespace AST
     class FuncDef : public Node
     {
     public:
+        FuncDef() : Node(ND_FuncDef) {}
         std::unique_ptr<FuncType> returnType_; //"int" 或 "void"
         std::string name_;
         std::vector<std::unique_ptr<FuncParam>> params_;
@@ -258,6 +317,7 @@ namespace AST
     class ExpStmt : public Stmt
     {
     public:
+        ExpStmt() : Stmt(ND_ExpStmt) {}
         std::unique_ptr<Exp> exp_;
 
         void accept(Visitor &v) override
@@ -269,6 +329,7 @@ namespace AST
     class Block : public Stmt
     {
     public:
+        Block() : Stmt(ND_Block) {}
         std::vector<std::unique_ptr<BlockItem>> items_;
 
         void accept(Visitor &v) override
@@ -281,6 +342,7 @@ namespace AST
     class BlockItem : public Node
     {
     public:
+        BlockItem() : Node(ND_BlockItem) {}
         std::unique_ptr<Node> item_; // Decl Or Stmt
 
         void accept(Visitor &v) override
@@ -293,6 +355,7 @@ namespace AST
     class AssignStmt : public Stmt
     {
     public:
+        AssignStmt() : Stmt(ND_AssignStmt) {}
         std::unique_ptr<LVal> lval_;
         std::unique_ptr<Exp> exp_;
 
@@ -306,6 +369,7 @@ namespace AST
     class IfStmt : public Stmt
     {
     public:
+        IfStmt() : Stmt(ND_IfStmt) {}
         std::unique_ptr<Exp> cond_;
         std::unique_ptr<Stmt> thenBranch_;
         std::unique_ptr<Stmt> elseBranch_; // 可为null
@@ -320,6 +384,7 @@ namespace AST
     class WhileStmt : public Stmt
     {
     public:
+        WhileStmt() : Stmt(ND_WhileStmt) {}
         std::unique_ptr<Exp> cond_;
         std::unique_ptr<Stmt> body_;
 
@@ -333,6 +398,7 @@ namespace AST
     class ReturnStmt : public Stmt
     {
     public:
+        ReturnStmt() : Stmt(ND_ReturnStmt) {}
         std::unique_ptr<Exp> exp_; // 可为null
 
         void accept(Visitor &v) override
@@ -345,6 +411,7 @@ namespace AST
     class IOStmt : public Stmt
     {
     public:
+        IOStmt() : Stmt(ND_IOStmt) {}
         enum class IOKind
         {
             Getint,
@@ -367,6 +434,7 @@ namespace AST
     class LVal : public Exp
     {
     public:
+        LVal() : Exp(ND_LVal) {}
         std::string name_;
         std::vector<std::unique_ptr<Exp>> indices_; // 数组下标（可为空）
 
@@ -379,6 +447,7 @@ namespace AST
     class PrimaryExp : public Exp
     {
     public:
+        PrimaryExp() : Exp(ND_PrimaryExp) {}
         std::variant<std::unique_ptr<Exp>, std::unique_ptr<LVal>, std::unique_ptr<Number>> operand_;
 
         void accept(Visitor &v) override
@@ -391,13 +460,14 @@ namespace AST
     class UnaryExp : public Exp
     {
     public:
+        UnaryExp() : Exp(ND_UnaryExp) {}
         enum class Op
         {
             Plus,
             Minus,
             Not
         };
-        Op op;
+        Op op=Op::Plus;
         std::unique_ptr<PrimaryExp> operand_;
 
         void accept(Visitor &v) override
@@ -410,6 +480,7 @@ namespace AST
     class AddExp : public Exp
     {
     public:
+        AddExp() : Exp(ND_AddExp) {}
         std::vector<std::variant<
             std::unique_ptr<Exp>, // 操作数
             TokenType             // 运算符（PLUS/MINUS）
@@ -423,6 +494,7 @@ namespace AST
     class MulExp : public Exp
     {
     public:
+        MulExp() : Exp(ND_MulExp) {}
         std::vector<std::variant<
             std::unique_ptr<Exp>, // 操作数
             TokenType             // 运算符（MULT/DIV/MOD）
@@ -435,6 +507,7 @@ namespace AST
     class LOrExp : public Exp
     {
     public:
+        LOrExp() : Exp(ND_LOrExp) {}
         std::vector<std::variant<
             std::unique_ptr<Exp>, // 操作数
             TokenType             // 运算符（||）
@@ -447,6 +520,7 @@ namespace AST
     class LAndExp : public Exp
     {
     public:
+        LAndExp() : Exp(ND_LAndExp) {}
         std::vector<std::variant<
             std::unique_ptr<Exp>, // 操作数
             TokenType             // 运算符（&&）
@@ -459,6 +533,7 @@ namespace AST
     class EqExp : public Exp
     {
     public:
+        EqExp() : Exp(ND_EqExp) {}
         std::vector<std::variant<
             std::unique_ptr<Exp>, // 操作数
             TokenType             // 运算符（==/!=）
@@ -471,6 +546,7 @@ namespace AST
     class RelExp : public Exp
     {
     public:
+        RelExp() : Exp(ND_RelExp) {}
         std::vector<std::variant<
             std::unique_ptr<Exp>, // 操作数
             TokenType             // 运算符（<、>、<=、>=）
@@ -484,6 +560,7 @@ namespace AST
     class CallExp : public Exp
     {
     public:
+        CallExp() : Exp(ND_CallExp) {}
         std::string funcName;
         std::vector<std::unique_ptr<Exp>> args_;
 
@@ -497,6 +574,7 @@ namespace AST
     class Number : public Exp
     {
     public:
+        Number() : Exp(ND_Number) {}
         int value_;
 
         void accept(Visitor &v) override
@@ -507,15 +585,22 @@ namespace AST
 
     //-----------------------------------------------------------------------
 
-    class FuncType
+    class FuncType : public Node
     {
     public:
+        FuncType() : Node(ND_FuncType) {}
         std::string typeName_;
+
+        void accept(Visitor &v) override
+        {
+            v.visit(*this);
+        }
     };
 
     class ConstInitVal : public Node
     {
     public:
+        ConstInitVal() : Node(ND_ConstInitVal) {}
         // 可能是单个常量表达式或嵌套数组初始化
         std::variant<std::unique_ptr<Exp>, std::vector<std::unique_ptr<ConstInitVal>>> value_;
 
@@ -529,6 +614,7 @@ namespace AST
     class InitVal : public Node
     {
     public:
+        InitVal() : Node(ND_InitVal) {}
         // 可能是单个表达式或嵌套数组初始化
         std::variant<std::unique_ptr<Exp>, std::vector<std::unique_ptr<InitVal>>> value_;
 
