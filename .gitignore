@@ -1,44 +1,13 @@
 # 编译输出目录
 build/
 
-# 日志文件
-logs/
-
-# 临时文件
-tmp/
-
-# 操作系统生成的文件
-.DS_Store
-Thumbs.db
-
 # 编译生成的中间文件和可执行文件
 *.o
 *.a
 *.so
 *.out
 *.exe
-
-# 调试信息文件
-*.dSYM/
-
-# 配置文件（如果不想跟踪特定配置）
-config/*.ini
-config/*.conf
-
-# 第三方库的构建产物（如果有）
-third_party/*/build/
-
-# 测试覆盖率报告
-coverage/
+*.ll
 
 # IDE 和编辑器的配置文件
 .vscode/
-.idea/
-*.sublime-workspace
-*.sublime-project
-
-# 自动生成的文档
-docs/generated/
-
-# 缓存文件
-.cache/

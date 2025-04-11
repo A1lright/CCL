@@ -526,7 +526,9 @@ void SemanticAnalyzer::visit(LVal &node)
                     }
                 }
             }
-        }else{
+        }
+        else
+        {
             // 对于标量变量，检查是否为常量
             if (symbol->symbolType_ == CONSTANT)
             {
@@ -570,10 +572,8 @@ void SemanticAnalyzer::visit(PrimaryExp &node)
 // 一元表达式
 void SemanticAnalyzer::visit(UnaryExp &node)
 {
-    if (node.operand_)
-    {
-        node.operand_->accept(*this);
-    }
+    // 1. 根据 variant 的实际类型，分发到对应的子节点
+    node.operand_->accept(*this);
 }
 
 // 加法表达式（同理适用于其他二元表达式）
@@ -768,12 +768,12 @@ bool SemanticAnalyzer::checkAndEvaluateInitList(const std::vector<std::unique_pt
 }
 
 bool SemanticAnalyzer::checkAndEvaluateConstInitList(const std::vector<std::unique_ptr<ConstInitVal>> &initList,
-                                   const std::vector<int> &dimensions,
-                                   size_t currentDim,
-                                   EvalConstant &evaluator,
-                                   std::vector<int> &evaluatedValues,
-                                   ErrorManager &errorManager,
-                                   const std::string &varName)
+                                                     const std::vector<int> &dimensions,
+                                                     size_t currentDim,
+                                                     EvalConstant &evaluator,
+                                                     std::vector<int> &evaluatedValues,
+                                                     ErrorManager &errorManager,
+                                                     const std::string &varName)
 {
     // 当前层次应有 dimensions[currentDim] 个元素
     if (initList.size() != dimensions[currentDim])

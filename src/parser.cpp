@@ -321,7 +321,7 @@ std::unique_ptr<AssignStmt> Parser::parseAssignStmt()
 {
     auto assignment = std::make_unique<AssignStmt>();
     assignment->lval_ = parseLVal();
-    advance();
+    advance(); // consume =
     assignment->exp_ = parseExp();
     advance();
     return assignment;
@@ -332,7 +332,7 @@ std::unique_ptr<Exp> Parser::parseExp()
     return parseAddExp();
 }
 
-std::unique_ptr<Exp> Parser::parseLogicalOrExp()
+std::unique_ptr<LOrExp> Parser::parseLogicalOrExp()
 {
     auto exp = std::make_unique<LOrExp>();
     exp->elements_.push_back(parseLogicalAndExp());
@@ -482,30 +482,34 @@ std::unique_ptr<MulExp> Parser::parseMulExp()
 std::unique_ptr<Exp> Parser::parseUnaryExp()
 {
     auto unary_exp = std::make_unique<UnaryExp>();
-    // 情况2：函数调用（Ident '(' ... ）
+    // 1. 操作符
+    if (match(TokenType::OPERATOR_PLUS))
+    {
+        unary_exp->op = UnaryExp::Op::Plus;
+    }
+    else if (match(TokenType::OPERATOR_MINUS))
+    {
+        unary_exp->op = UnaryExp::Op::Minus;
+    }
+    else if (match(TokenType::OPERATOR_LOGICAL_NOT))
+    {
+        unary_exp->op = UnaryExp::Op::Not;
+    }
+
+    // 2. operand_ 现在可能是 CallExp、UnaryExp 或 PrimaryExp
     if (check(TokenType::IDENTIFIER) && peek(1).tokenType_ == TokenType::PUNCTUATION_LEFT_PAREN)
     {
-        return parseCallExp();
+        unary_exp->operand_ = parseCallExp();
     }
-
-    // 情况1：单目运算符（+、-、！）
-    if (check(TokenType::OPERATOR_PLUS) || check(TokenType::OPERATOR_MINUS) || check(TokenType::OPERATOR_LOGICAL_NOT))
+    else if (check(TokenType::OPERATOR_PLUS) || check(TokenType::OPERATOR_MINUS) || check(TokenType::OPERATOR_LOGICAL_NOT))
     {
-        if (match(TokenType::OPERATOR_PLUS))
-        {
-            unary_exp->op = UnaryExp::Op::Plus;
-        }
-        else if (match(TokenType::OPERATOR_MINUS))
-        {
-            unary_exp->op = UnaryExp::Op::Minus;
-        }
-        else
-        {
-            unary_exp->op = UnaryExp::Op::Not;
-        }
+        // 连续的一元运算符
+        unary_exp->operand_ = parseUnaryExp();
     }
-
-    unary_exp->operand_ = parsePrimaryExp();
+    else
+    {
+        unary_exp->operand_ = parsePrimaryExp();
+    }
 
     return unary_exp;
 }

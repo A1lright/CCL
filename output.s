@@ -19,6 +19,20 @@ getint:
 	.size	getint, .Lfunc_end0-getint
 	.cfi_endproc
 
+	.globl	add
+	.p2align	4, 0x90
+	.type	add,@function
+add:
+	.cfi_startproc
+	movl	%edi, -4(%rsp)
+	movl	%esi, -8(%rsp)
+	leal	(%rdi,%rsi), %eax
+	movl	%eax, -12(%rsp)
+	retq
+.Lfunc_end1:
+	.size	add, .Lfunc_end1-add
+	.cfi_endproc
+
 	.globl	main
 	.p2align	4, 0x90
 	.type	main,@function
@@ -26,27 +40,18 @@ main:
 	.cfi_startproc
 	subq	$24, %rsp
 	.cfi_def_cfa_offset 32
+	movl	$1, 20(%rsp)
+	movl	$2, 16(%rsp)
 	movl	$0, 12(%rsp)
-	callq	getint@PLT
+	movl	$1, %edi
+	movl	$2, %esi
+	callq	add@PLT
 	movl	%eax, 12(%rsp)
-	movl	$4, 20(%rsp)
-	addl	$4, %eax
-	movl	%eax, 16(%rsp)
-	cmpl	$3, %eax
-	jl	.LBB1_3
-	movl	$.Lfmt.1, %edi
-	jmp	.LBB1_2
-.LBB1_3:
-	movl	$.Lfmt.2, %edi
-.LBB1_2:
-	xorl	%eax, %eax
-	callq	printf@PLT
-	movl	12(%rsp), %eax
 	addq	$24, %rsp
 	.cfi_def_cfa_offset 8
 	retq
-.Lfunc_end1:
-	.size	main, .Lfunc_end1-main
+.Lfunc_end2:
+	.size	main, .Lfunc_end2-main
 	.cfi_endproc
 
 	.type	.Lfmt,@object
@@ -54,15 +59,5 @@ main:
 .Lfmt:
 	.asciz	"%d"
 	.size	.Lfmt, 3
-
-	.type	.Lfmt.1,@object
-.Lfmt.1:
-	.asciz	"\"true\""
-	.size	.Lfmt.1, 7
-
-	.type	.Lfmt.2,@object
-.Lfmt.2:
-	.asciz	"\"false\""
-	.size	.Lfmt.2, 8
 
 	.section	".note.GNU-stack","",@progbits

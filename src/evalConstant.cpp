@@ -322,6 +322,7 @@ int EvalConstant::VisitRelExp(RelExp *exp)
 int EvalConstant::VisitCallExp(CallExp *exp)
 {
     // 常量表达式中一般不允许函数调用
+    return 0;
     throw std::runtime_error("Function call not allowed in constant expression.");
 }
 

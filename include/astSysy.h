@@ -92,7 +92,7 @@ namespace AST
     class FuncParam;   // 函数形参（int a[] 或 int a[2][3]）
     class FuncDef;     // 函数定义（int func(int a, int b[]) { ... }）
     class MainFuncDef; // 主函数定义（int main() { ... }）
-    class FuncType; // 函数返回类型（int 或 void）
+    class FuncType;    // 函数返回类型（int 或 void）
 
     // 语句节点
     class ExpStmt;    // 表达式语句（exp;）
@@ -370,7 +370,7 @@ namespace AST
     {
     public:
         IfStmt() : Stmt(ND_IfStmt) {}
-        std::unique_ptr<Exp> cond_;
+        std::unique_ptr<LOrExp> cond_;
         std::unique_ptr<Stmt> thenBranch_;
         std::unique_ptr<Stmt> elseBranch_; // 可为null
 
@@ -385,7 +385,7 @@ namespace AST
     {
     public:
         WhileStmt() : Stmt(ND_WhileStmt) {}
-        std::unique_ptr<Exp> cond_;
+        std::unique_ptr<LOrExp> cond_;
         std::unique_ptr<Stmt> body_;
 
         void accept(Visitor &v) override
@@ -467,8 +467,8 @@ namespace AST
             Minus,
             Not
         };
-        Op op=Op::Plus;
-        std::unique_ptr<PrimaryExp> operand_;
+        Op op = Op::Plus;
+        std::unique_ptr<Exp> operand_; // 可能是函数调用或一元表达式
 
         void accept(Visitor &v) override
         {

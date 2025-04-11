@@ -56,7 +56,7 @@ private:
 
     // 表达式
     std::unique_ptr<Exp> parseExp();
-    std::unique_ptr<Exp> parseLogicalOrExp();
+    std::unique_ptr<LOrExp> parseLogicalOrExp();
     std::unique_ptr<Exp> parseLogicalAndExp();
     std::unique_ptr<Exp> parseEqExp();
     std::unique_ptr<Exp> parseRelExp();

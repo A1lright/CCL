@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/CCL",
             "args": [
-                "${workspaceFolder}/test/test_func.c"
+                "${workspaceFolder}/tests/inputs/test_func.c"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
