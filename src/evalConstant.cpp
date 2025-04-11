@@ -161,6 +161,7 @@ int EvalConstant::VisitLValExp(LVal *exp)
     // 对于常量表达式中的变量引用，
     // 如果变量是常量则应在语义分析阶段已将其值求出；
     // 这里简单示例返回 0 或抛出异常。
+    return 0;
     throw std::runtime_error("LVal cannot be evaluated as a constant expression.");
 }
 

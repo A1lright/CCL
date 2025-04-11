@@ -24,18 +24,25 @@ getint:
 	.type	main,@function
 main:
 	.cfi_startproc
-	pushq	%rbx
-	.cfi_def_cfa_offset 16
-	.cfi_offset %rbx, -16
+	subq	$24, %rsp
+	.cfi_def_cfa_offset 32
+	movl	$0, 12(%rsp)
 	callq	getint@PLT
-	movq	c@GOTPCREL(%rip), %rbx
-	movl	%eax, (%rbx)
+	movl	%eax, 12(%rsp)
+	movl	$4, 20(%rsp)
+	addl	$4, %eax
+	movl	%eax, 16(%rsp)
+	cmpl	$3, %eax
+	jl	.LBB1_3
 	movl	$.Lfmt.1, %edi
-	movl	%eax, %esi
+	jmp	.LBB1_2
+.LBB1_3:
+	movl	$.Lfmt.2, %edi
+.LBB1_2:
 	xorl	%eax, %eax
 	callq	printf@PLT
-	movl	(%rbx), %eax
-	popq	%rbx
+	movl	12(%rsp), %eax
+	addq	$24, %rsp
 	.cfi_def_cfa_offset 8
 	retq
 .Lfunc_end1:
@@ -48,18 +55,14 @@ main:
 	.asciz	"%d"
 	.size	.Lfmt, 3
 
-	.type	c,@object
-	.bss
-	.globl	c
-	.p2align	2, 0x0
-c:
-	.long	0
-	.size	c, 4
-
 	.type	.Lfmt.1,@object
-	.section	.rodata.str1.1,"aMS",@progbits,1
 .Lfmt.1:
-	.asciz	"\"%d\""
-	.size	.Lfmt.1, 5
+	.asciz	"\"true\""
+	.size	.Lfmt.1, 7
+
+	.type	.Lfmt.2,@object
+.Lfmt.2:
+	.asciz	"\"false\""
+	.size	.Lfmt.2, 8
 
 	.section	".note.GNU-stack","",@progbits

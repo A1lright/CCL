@@ -526,6 +526,15 @@ void SemanticAnalyzer::visit(LVal &node)
                     }
                 }
             }
+        }else{
+            // 对于标量变量，检查是否为常量
+            if (symbol->symbolType_ == CONSTANT)
+            {
+                return;
+                errorManager.addError(ErrorLevel::ERROR, 'k', 0,
+                                      "不能修改常量：" + node.name_,
+                                      ErrorType::SemanticError);
+            }
         }
         // 对于标量变量的访问，仅需检查变量是否存在即可
         for (auto &index : node.indices_)

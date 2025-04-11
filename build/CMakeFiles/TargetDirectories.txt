@@ -1,7 +1,0 @@
-/home/lin/CCl/build/CMakeFiles/intrinsics_gen.dir
-/home/lin/CCl/build/CMakeFiles/omp_gen.dir
-/home/lin/CCl/build/CMakeFiles/acc_gen.dir
-/home/lin/CCl/build/CMakeFiles/RISCVTargetParserTableGen.dir
-/home/lin/CCl/build/CMakeFiles/CCL.dir
-/home/lin/CCl/build/CMakeFiles/edit_cache.dir
-/home/lin/CCl/build/CMakeFiles/rebuild_cache.dir

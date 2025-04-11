@@ -239,11 +239,8 @@ std::unique_ptr<Stmt> Parser::parseStmt()
     {
         return parseGetintStmt();
     }
-    else if (isAssignStmt())
-    {
-        return parseAssignStmt();
-    }
-    else if (match(TokenType::PUNCTUATION_LEFT_BRACE))
+
+    else if (check(TokenType::PUNCTUATION_LEFT_BRACE))
     {
         return parseBlock();
     }
@@ -263,6 +260,10 @@ std::unique_ptr<Stmt> Parser::parseStmt()
     {
         return parsePrintfStmt();
     }
+    else if (isAssignStmt())
+    {
+        return parseAssignStmt();
+    }
     else
     {
         return parseExpStmt();
@@ -272,14 +273,17 @@ std::unique_ptr<Stmt> Parser::parseStmt()
 std::unique_ptr<IfStmt> Parser::parseIfStmt()
 {
     auto if_stmt = std::make_unique<IfStmt>();
-    advance();
-    if_stmt->cond_ = parseExp();
-    advance();
-    if_stmt->elseBranch_ = parseStmt();
+    advance(); // consume "if"
+    if_stmt->cond_ = parseLogicalOrExp();
+    advance(); // consume ")"
+
+    auto stmt = parseStmt();
+    if_stmt->thenBranch_ = std::move(stmt);
 
     if (match(TokenType::KEYWORD_ELSE))
     {
-        if_stmt->elseBranch_ = parseStmt();
+        stmt = parseStmt();
+        if_stmt->elseBranch_ = std::move(stmt);
     }
     return if_stmt;
 }
@@ -288,7 +292,7 @@ std::unique_ptr<WhileStmt> Parser::parseWhileStmt()
 {
     auto while_stmt = std::make_unique<WhileStmt>();
     advance();
-    while_stmt->cond_ = parseExp();
+    while_stmt->cond_ = parseLogicalOrExp();
     advance();
     while_stmt->body_ = parseStmt();
     return while_stmt;

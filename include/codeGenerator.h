@@ -38,6 +38,7 @@ public:
     ~CodeGenerator();
 
     void emitMIPSAssembly(const std::string &outputFilename);
+    void emitIRToFile(const std::string &outputFilename);
 
     // 主入口
     void generateCode(AST::CompUnit &compUnit);
