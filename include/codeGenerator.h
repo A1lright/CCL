@@ -108,6 +108,8 @@ private:
     void PopScope();
     void ClearVarScope();
 
+    llvm::Value *loadIfPointer(llvm::Value *v);
+
 private:
     // 符号表
     llvm::SmallVector<llvm::StringMap<std::pair<llvm::Value *, llvm::Type *>>> localVarMap;
