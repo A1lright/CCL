@@ -47,8 +47,8 @@ int main(int argc, char *argv[])
     std::unique_ptr<AST::CompUnit> program = parser.parseCompUnit();
 
     // 语义分析
-    // SemanticAnalyzer sema;
-    // program->accept(sema);
+    SemanticAnalyzer sema;
+    program->accept(sema);
 
     CodeGenerator codeGen;
     program->accept(codeGen);

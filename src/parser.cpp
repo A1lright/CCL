@@ -167,8 +167,6 @@ std::unique_ptr<MainFuncDef> Parser::parseMainFuncDef()
     advance(); // consume "("
     advance(); // consume ")"
 
-    // 将 main 函数符号添加到全局符号表
-
     main_func_def->body_ = parseBlock();
 
     return main_func_def;
@@ -179,7 +177,7 @@ std::unique_ptr<FuncParam> Parser::parseFuncParam()
     auto param = std::make_unique<FuncParam>();
     param->bType_ = parseBType();
     param->name_ = advance().value_;
-
+    param->isArray_ = false; // 默认不是数组参数
     // 处理数组类型（如 int a[] 或 int a[2][3]）
     while (match(TokenType::PUNCTUATION_LEFT_BRACKET))
     {
@@ -192,6 +190,7 @@ std::unique_ptr<FuncParam> Parser::parseFuncParam()
             param->dimSizes_.push_back(parseConstExp());
             advance();
         }
+        param->isArray_ = true; // 标记为数组参数
     }
     return param;
 }

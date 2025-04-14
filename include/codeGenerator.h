@@ -11,7 +11,6 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/ADT/DenseMap.h"
 
-
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
@@ -97,12 +96,10 @@ private:
     std::unique_ptr<llvm::Module> module_;
     llvm::Function *currentFunc_ = nullptr;
 
-
 private:
     void AddLocalVarToMap(llvm::Value *addr, llvm::Type *ty, llvm::StringRef name);
     void AddGlobalVarToMap(llvm::Value *addr, llvm::Type *ty, llvm::StringRef name);
     std::pair<llvm::Value *, llvm::Type *> GetVarByName(llvm::StringRef name);
-    
 
     void PushScope();
     void PopScope();
@@ -119,8 +116,9 @@ private:
 
     Function *createGetintFunction(Module *module, LLVMContext &context);
 
-
     EvalConstant evalConstant;
+
+    llvm::Type *currentType_ = nullptr;
 };
 
 #endif // CODEGENERATOR_H

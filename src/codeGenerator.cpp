@@ -3,11 +3,11 @@
 #include "llvm/Support/Host.h"
 #include "llvm/MC/MCTargetOptions.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/IR/Type.h"
 
 using namespace llvm;
 
-CodeGenerator::CodeGenerator()
-    : builder_(context_), module_(std::make_unique<Module>("SysY_module", context_))
+CodeGenerator::CodeGenerator() : builder_(context_), module_(std::make_unique<Module>("SysY_module", context_))
 {
     createGetintFunction(module_.get(), context_);
     PushScope();
@@ -74,31 +74,19 @@ void CodeGenerator::visit(ConstDef &node)
     {
         // 先生成常量的初始值
         llvm::Constant *initVal = llvm::ConstantInt::get(builder_.getInt32Ty(), 0);
-        // 如果有初始化表达式，则计算其值
-        // 这里可以调用类似 EvalConstant 的工具函数直接求值，
-        // 但为了简单示例，假定初始值已经通过语义分析保存在 node 内部
         if (node.hasInit)
         {
-            // 假定 node.initVal_ 已经是求值后的常量值
-            // 实际中可能需要更复杂的表达式求值过程
             initVal = llvm::ConstantInt::get(builder_.getInt32Ty(), evalConstant.Eval(node.initVal_.get()));
         }
-        // 创建全局常量变量，标记为 constant，存放在 module_ 中
-        llvm::GlobalVariable *gVar = new llvm::GlobalVariable(
-            *module_,
-            builder_.getInt32Ty(),
-            /* isConstant */ true,
-            llvm::GlobalValue::ExternalLinkage,
-            initVal,
-            node.name_);
-        // 将生成的变量添加到全局符号映射中
+        // 创建全局常量变量，标记为constant，存放在module_中
+        llvm::GlobalVariable *gVar = new llvm::GlobalVariable(*module_, builder_.getInt32Ty(), true, llvm::GlobalValue::ExternalLinkage, initVal, node.name_);
+        // 添加到全局符号
         AddGlobalVarToMap(gVar, builder_.getInt32Ty(), node.name_);
         return;
     }
     else
     {
-        // 2) 带维度，数组常量
-        // 2.1 读取各维长度
+        // 带维度信息，为数组常量
         std::vector<uint64_t> dims;
         for (auto &dimExp : node.dimensions_)
         {
@@ -112,7 +100,7 @@ void CodeGenerator::visit(ConstDef &node)
             return;
         }
 
-        // 2.2 扁平化 ConstInitVal
+        // 扁平化ConstInitVal
         std::vector<Constant *> flat;
         std::function<void(ConstInitVal *)> flatten = [&](ConstInitVal *cv)
         {
@@ -130,7 +118,7 @@ void CodeGenerator::visit(ConstDef &node)
         };
         flatten(node.initVal_.get());
 
-        // 2.3 构造 ConstantArray 嵌套结构
+        // 构造 ConstantArray 嵌套结构
         // 一维： [N x i32]
         // 二维： [M x [N x i32]]
         Type *elemTy = builder_.getInt32Ty();
@@ -151,12 +139,7 @@ void CodeGenerator::visit(ConstDef &node)
             ArrayType *arrTy = ArrayType::get(elemTy, N);
             initConst = ConstantArray::get(arrTy, elems);
             // 创建全局变量
-            GlobalVariable *gVar = new GlobalVariable(
-                *module_, arrTy,
-                /*isConstant=*/true,
-                GlobalValue::ExternalLinkage,
-                initConst,
-                node.name_);
+            GlobalVariable *gVar = new GlobalVariable(*module_, arrTy, true, GlobalValue::ExternalLinkage, initConst, node.name_);
             AddGlobalVarToMap(gVar, arrTy, node.name_);
         }
         else
@@ -183,12 +166,7 @@ void CodeGenerator::visit(ConstDef &node)
                 rows.push_back(ConstantArray::get(innerTy, row));
             }
             initConst = ConstantArray::get(outerTy, rows);
-            GlobalVariable *gVar = new GlobalVariable(
-                *module_, outerTy,
-                /*isConstant=*/true,
-                GlobalValue::ExternalLinkage,
-                initConst,
-                node.name_);
+            GlobalVariable *gVar = new GlobalVariable(*module_, outerTy, true, GlobalValue::ExternalLinkage, initConst, node.name_);
             AddGlobalVarToMap(gVar, outerTy, node.name_);
         }
     }
@@ -196,14 +174,13 @@ void CodeGenerator::visit(ConstDef &node)
 
 void CodeGenerator::visit(ConstDecl &node)
 {
-    // 目前只支持 int 类型
+    // 只支持int类型，无需遍历type获取信息
     for (auto &constDef : node.constDefs_)
     {
         constDef->accept(*this);
     }
 }
 
-// 变量定义：生成局部变量的 alloca，并处理初始化
 void CodeGenerator::visit(VarDef &node)
 {
     // 如果没有维度信息，则是标量变量
@@ -212,9 +189,6 @@ void CodeGenerator::visit(VarDef &node)
         llvm::Constant *initVal = llvm::ConstantInt::get(builder_.getInt32Ty(), 0);
         if (node.hasInit)
         {
-            // 使用 evalConstant 来计算初始值
-            // TODO: 这里需要处理更复杂的初始化表达式
-            // 遍历 node.constExps_，计算初始值
             initVal = llvm::ConstantInt::get(builder_.getInt32Ty(), evalConstant.Eval(node.initVal_.get()));
         }
 
@@ -228,18 +202,13 @@ void CodeGenerator::visit(VarDef &node)
         else
         {
             // 如果是全局变量，创建全局变量
-            llvm::GlobalVariable *gVar = new llvm::GlobalVariable(
-                *module_,
-                builder_.getInt32Ty(),
-                false, llvm::GlobalValue::ExternalLinkage,
-                initVal,
-                node.name_);
+            llvm::GlobalVariable *gVar = new llvm::GlobalVariable(*module_, builder_.getInt32Ty(), false, llvm::GlobalValue::ExternalLinkage, initVal, node.name_);
             AddGlobalVarToMap(gVar, builder_.getInt32Ty(), node.name_);
         }
     }
     else
     {
-        // 2) 数组变量：一维或二维
+        // 数组变量一维或二维
         std::vector<uint64_t> dims;
         for (auto &exp : node.constExps_)
         {
@@ -251,7 +220,7 @@ void CodeGenerator::visit(VarDef &node)
             return;
         }
 
-        // 3) 扁平化 InitVal
+        // 扁平化InitVal
         std::vector<Constant *> flat;
         std::function<void(InitVal *)> flatten = [&](InitVal *iv)
         {
@@ -283,73 +252,72 @@ void CodeGenerator::visit(VarDef &node)
             arrayTy = ArrayType::get(inner, dims[0]);
         }
 
-        // 5) 分配：局部 alloca 或 全局 GlobalVariable
+        // 局部 alloca 或 全局 GlobalVariable
         Value *basePtr = nullptr;
         if (currentFunc_)
         {
             basePtr = builder_.CreateAlloca(arrayTy, nullptr, node.name_);
             AddLocalVarToMap(basePtr, arrayTy, node.name_);
-        }
-        else
-        {
-            // 全局数组
-            Constant *zeroInit = ConstantAggregateZero::get(arrayTy);
-            GlobalVariable *gVar = new GlobalVariable(
-                *module_, arrayTy,
-                /*isConstant=*/false,
-                GlobalValue::ExternalLinkage,
-                zeroInit,
-                node.name_);
-            basePtr = gVar;
-            AddGlobalVarToMap(gVar, arrayTy, node.name_);
-        }
-
-        // 6) 逐元素 store 初始值
-        //  索引列表：[0, i] 或 [0, i, j]
-        Constant *zero = ConstantInt::get(i32, 0);
-        if (dims.size() == 1)
-        {
-            uint64_t N = dims[0];
-            for (uint64_t i = 0; i < N; ++i)
+            //  索引列表：[0, i] 或 [0, i, j]
+            Constant *zero = ConstantInt::get(i32, 0);
+            if (dims.size() == 1) // 一维数组
             {
-                Constant *idx1 = ConstantInt::get(i32, i);
-                Value *elemPtr = builder_.CreateGEP(
-                    arrayTy, basePtr,
-                    {zero, idx1},
-                    node.name_ + ".idx");
-                Constant *c = (i < flat.size() ? flat[i]
-                                               : ConstantInt::get(i32, 0));
-                builder_.CreateStore(c, elemPtr);
-            }
-        }
-        else
-        {
-            uint64_t M = dims[0], N = dims[1];
-            for (uint64_t i = 0; i < M; ++i)
-            {
-                for (uint64_t j = 0; j < N; ++j)
+                uint64_t N = dims[0];
+                for (uint64_t i = 0; i < N; ++i)
                 {
                     Constant *idx1 = ConstantInt::get(i32, i);
-                    Constant *idx2 = ConstantInt::get(i32, j);
                     Value *elemPtr = builder_.CreateGEP(
                         arrayTy, basePtr,
-                        {zero, idx1, idx2},
+                        {zero, idx1},
                         node.name_ + ".idx");
-                    uint64_t flatIdx = i * N + j;
-                    Constant *c = (flatIdx < flat.size()
-                                       ? flat[flatIdx]
-                                       : ConstantInt::get(i32, 0));
+                    Constant *c = (i < flat.size() ? flat[i]
+                                                   : ConstantInt::get(i32, 0));
                     builder_.CreateStore(c, elemPtr);
                 }
             }
+            else // 二维数组
+            {
+                uint64_t M = dims[0], N = dims[1];
+                for (uint64_t i = 0; i < M; ++i)
+                {
+                    for (uint64_t j = 0; j < N; ++j)
+                    {
+                        Constant *idx1 = ConstantInt::get(i32, i);
+                        Constant *idx2 = ConstantInt::get(i32, j);
+                        Value *elemPtr = builder_.CreateGEP(arrayTy, basePtr, {zero, idx1, idx2}, node.name_ + ".idx");
+                        uint64_t flatIdx = i * N + j;
+                        Constant *c = (flatIdx < flat.size() ? flat[flatIdx] : ConstantInt::get(i32, 0));
+                        builder_.CreateStore(c, elemPtr);
+                    }
+                }
+            }
+        }
+        else
+        {
+            // 全局数组：使用ConstantArray::get初始化数组
+            // 创建内部数组的常量（每个元素都是ConstantInt）
+            llvm::SmallVector<llvm::Constant *, 64> InnerConstants;
+            for (size_t i = 0; i < flat.size(); ++i)
+            {
+                InnerConstants.push_back(flat[i]);
+            }
+
+            // 创建外部数组的常量
+            llvm::ArrayType *InnerArrayTy = llvm::ArrayType::get(i32, dims[1]);          // 内部数组类型
+            llvm::ArrayType *OuterArrayTy = llvm::ArrayType::get(InnerArrayTy, dims[0]); // 外部数组类型
+
+            // 使用ConstantArray创建外部数组的初始化值
+            llvm::Constant *GlobalArrayInit = llvm::ConstantArray::get(OuterArrayTy, llvm::ArrayRef<llvm::Constant *>(InnerConstants));
+
+            // 创建全局变量并初始化
+            llvm::GlobalVariable *gVar = new llvm::GlobalVariable(*module_, OuterArrayTy, true, llvm::GlobalValue::InternalLinkage, GlobalArrayInit, node.name_);
+            basePtr = gVar;
+            AddGlobalVarToMap(gVar, arrayTy, node.name_);
         }
     }
 }
 
-//===----------------------------------------------------------------------===//
 // 函数处理
-//===----------------------------------------------------------------------===//
-
 void CodeGenerator::visit(FuncParam &node)
 {
     // 无需处理
@@ -357,29 +325,55 @@ void CodeGenerator::visit(FuncParam &node)
 
 void CodeGenerator::visit(FuncDef &node)
 {
-    // --- 1.1 构造函数类型 ---
     // 返回类型
-    llvm::Type *retTy = (node.returnType_->typeName_ == "void")
-                            ? builder_.getVoidTy()
-                            : builder_.getInt32Ty();
+    llvm::Type *retTy = (node.returnType_->typeName_ == "void") ? builder_.getVoidTy() : builder_.getInt32Ty();
     // 参数类型列表
     std::vector<llvm::Type *> paramTys;
+    std::vector<llvm::Type *> rowTys;
     for (auto &param : node.params_)
     {
-        // SysY 只支持 int 和 int[] 形参，均映射为 i32*
-        paramTys.push_back(builder_.getInt32Ty());
+        llvm::Type *paramType = nullptr;
+        if (param->isArray_)
+        {
+            // 处理多维数组参数
+            std::vector<uint64_t> innerDims;
+
+            // 跳过第一维（允许空缺），收集后续维度（必须为常量）
+            for (size_t i = 1; i < param->dimSizes_.size(); ++i)
+            {
+                auto &dim = param->dimSizes_[i];
+                if (!dim)
+                {
+                    errs() << "Inner array dimensions must be specified\n";
+                    return;
+                }
+                innerDims.push_back(evalConstant.Eval(dim.get()));
+            }
+
+            // 从内到外构建嵌套数组类型
+            Type *currentType = builder_.getInt32Ty();
+            for (auto it = innerDims.rbegin(); it != innerDims.rend(); ++it)
+            {
+                currentType = ArrayType::get(currentType, *it);
+            }
+            currentType_ = currentType;
+            rowTys.push_back(currentType); // 内层数组类型
+            // 参数类型为指向最内层数组的指针
+            paramType = PointerType::get(currentType, 0);
+        }
+        else
+        {
+            paramType = builder_.getInt32Ty();
+        }
+        paramTys.push_back(paramType);
     }
+
     llvm::FunctionType *funcTy = llvm::FunctionType::get(retTy, paramTys, false);
 
-    // --- 1.2 在模块中创建函数 ---
-    llvm::Function *func = llvm::Function::Create(
-        funcTy,
-        llvm::Function::ExternalLinkage,
-        node.name_,
-        module_.get());
+    // 在模块中创建函数
+    llvm::Function *func = llvm::Function::Create(funcTy, llvm::Function::ExternalLinkage, node.name_, module_.get());
     currentFunc_ = func;
 
-    // --- 1.3 为形参命名并分配空间 ---
     // 在入口块开头插入 alloca
     llvm::BasicBlock *entryBB = llvm::BasicBlock::Create(context_, "entry", func);
     builder_.SetInsertPoint(entryBB);
@@ -389,21 +383,25 @@ void CodeGenerator::visit(FuncDef &node)
     unsigned idx = 0;
     for (auto &arg : func->args())
     {
-        // 为每个参数创建 alloca
-        std::string pname = node.params_[idx]->name_;
-        llvm::AllocaInst *alloc = builder_.CreateAlloca(
-            builder_.getInt32Ty(), nullptr, pname);
+        // 获取参数元数据
+        auto &param = node.params_[idx]; // FuncParam 节点
+        std::string pname = param->name_;
+
+        Type *paramTy = arg.getType(); // 从 LLVM 函数参数获取类型
+
+        AllocaInst *alloc = builder_.CreateAlloca(
+            paramTy, nullptr, pname + ".addr");
         // 将调用时传入的参数存入 alloc
         builder_.CreateStore(&arg, alloc);
         // 记录到符号映射
-        AddLocalVarToMap(alloc, builder_.getInt32Ty(), pname);
+        // 假设 paramType 是一个 Type* 类型
+        AddLocalVarToMap(alloc, paramTy, pname);
         idx++;
     }
 
-    // --- 1.4 生成函数体 ---
     node.body_->accept(*this);
 
-    // --- 1.5 如果函数末尾没有 return，补充默认 return ---
+    // 函数末尾没有return，补充默认return
     if (!entryBB->getTerminator())
     {
         if (retTy->isVoidTy())
@@ -420,11 +418,12 @@ void CodeGenerator::visit(FuncDef &node)
     llvm::verifyFunction(*func);
 
     PopScope();
+    //currentType_ = nullptr;
 }
 
 void CodeGenerator::visit(MainFuncDef &node)
 {
-    // 创建 main 函数：i32 @main()
+    // 创建main函数
     FunctionType *mainTy = FunctionType::get(builder_.getInt32Ty(), {}, false);
     Function *mainFunc = Function::Create(
         mainTy, Function::ExternalLinkage, "main", module_.get());
@@ -435,7 +434,7 @@ void CodeGenerator::visit(MainFuncDef &node)
 
     currentFunc_ = mainFunc;
 
-    // 处理 main 函数体
+    // 处理main函数体
     node.body_->accept(*this);
 
     // 如果没有终结指令，则添加 `ret i32 0`
@@ -497,10 +496,7 @@ void CodeGenerator::visit(FuncType &node)
 {
 }
 
-//===----------------------------------------------------------------------===//
 // 控制流语句
-//===----------------------------------------------------------------------===//
-
 void CodeGenerator::visit(ExpStmt &node)
 {
     node.exp_->accept(*this);
@@ -522,7 +518,7 @@ void CodeGenerator::visit(AssignStmt &node)
     node.exp_->accept(*this);
     llvm::Value *rhs = currentValue_;
     rhs = loadIfPointer(currentValue_);
-    // 生成左值（得到变量地址）
+    // 生成左值，得到变量地址
     node.lval_->accept(*this);
     llvm::Value *lvalAddr = currentValue_;
     if (lvalAddr)
@@ -538,10 +534,8 @@ void CodeGenerator::visit(IfStmt &node)
     node.cond_->accept(*this);
     llvm::Value *condValue = currentValue_;
 
-    // 转换条件值为布尔值（0 为 false，非 0 为 true）
-    condValue = builder_.CreateICmpNE(condValue,
-                                      llvm::ConstantInt::get(llvm::Type::getInt32Ty(context_), 0),
-                                      "ifcond");
+    // 转换条件值为布尔值
+    condValue = builder_.CreateICmpNE(condValue, llvm::ConstantInt::get(llvm::Type::getInt32Ty(context_), 0), "ifcond");
 
     // 获取当前函数
     llvm::Function *function = builder_.GetInsertBlock()->getParent();
@@ -551,7 +545,7 @@ void CodeGenerator::visit(IfStmt &node)
     BasicBlock *elseBB = nullptr; // elseBB 仅在有 else 分支时创建
     BasicBlock *mergeBB = BasicBlock::Create(context_, "ifcont", function);
 
-    // 如果有 else 分支，创建 elseBB 基本块
+    // 如果有else分支，创建elseBB基本块
     if (node.elseBranch_)
     {
         elseBB = BasicBlock::Create(context_, "else", function);
@@ -588,27 +582,25 @@ void CodeGenerator::visit(WhileStmt &node)
     // 获取当前函数
     llvm::Function *function = builder_.GetInsertBlock()->getParent();
 
-    // 创建循环的基本块
     BasicBlock *condBB = BasicBlock::Create(context_, "while.cond", function); // 条件判断基本块
     BasicBlock *loopBB = BasicBlock::Create(context_, "while.body", function); // 循环体基本块
     BasicBlock *exitBB = BasicBlock::Create(context_, "while.exit", function); // 循环退出基本块
 
-    // 跳转到条件判断基本块
     builder_.CreateBr(condBB);
 
     // 设置插入点到条件判断基本块
     builder_.SetInsertPoint(condBB);
 
-    // 处理条件表达式（检查条件是否为真）
+    // 检查条件是否为真
     node.cond_->accept(*this);
     llvm::Value *condValue = currentValue_;
 
-    // 转换条件值为布尔值（0 为 false，非 0 为 true）
+    // 转换条件值为布尔值
     condValue = builder_.CreateICmpNE(condValue,
                                       llvm::ConstantInt::get(llvm::Type::getInt32Ty(context_), 0),
                                       "whilecond");
 
-    // 根据条件判断，决定是否跳转到循环体或者退出循环
+    // 决定是否跳转到循环体或者退出循环
     builder_.CreateCondBr(condValue, loopBB, exitBB);
 
     // 设置插入点到循环体基本块
@@ -617,7 +609,6 @@ void CodeGenerator::visit(WhileStmt &node)
     // 处理循环体
     node.body_->accept(*this);
 
-    // 循环体执行完后跳转回条件判断基本块
     builder_.CreateBr(condBB);
 
     // 设置插入点到循环退出基本块
@@ -672,37 +663,53 @@ void CodeGenerator::visit(IOStmt &node)
         for (auto &arg : node.args_)
         {
             arg->accept(*this);
-            // currentValue_ = builder_.CreateLoad(llvm::Type::getInt32Ty(context_), currentValue_);
+            currentValue_ = builder_.CreateLoad(llvm::Type::getInt32Ty(context_), currentValue_);
             printfArgs.push_back(currentValue_);
         }
         builder_.CreateCall(printfFunc, printfArgs, "printfCall");
     }
 }
 
+// 1.普通变量 2.一维数组 3.二维数组
 void CodeGenerator::visit(LVal &node)
 {
+    // 1. 查找变量符号（支持局部和全局变量）
     auto var = GetVarByName(node.name_);
-    auto basePtr = var.first;
-    auto varTy = var.second;
+    Value *basePtr = var.first;
+    Type *baseTy = var.second;
+
     if (!basePtr)
     {
         currentValue_ = nullptr;
         return;
     }
+    currentValue_ = basePtr;
+    // 1.第一种情况：普通变量直接返回地址
     if (node.indices_.empty())
     {
         currentValue_ = basePtr;
         return;
     }
-    SmallVector<Value *, 4> idxList;
-    idxList.push_back(ConstantInt::get(Type::getInt32Ty(context_), 0));
-    for (auto &idx : node.indices_)
-    {
-        idx->accept(*this);
-        currentValue_ = loadIfPointer(currentValue_);
-        idxList.push_back(currentValue_);
+
+    SmallVector<Value *, 4> indices;
+    for (auto &idxExp : node.indices_) {
+        idxExp->accept(*this);
+        indices.push_back(loadIfPointer(currentValue_)); // 获取索引值（如 i 和 j）
     }
-    currentValue_ = builder_.CreateGEP(varTy, basePtr, idxList, node.name_ + ".elem");
+
+    // 2. 处理数组索引（关键修正点：删除硬编码的 0，直接使用用户提供的索引）
+    if (currentType_->isArrayTy()) {
+        Type *currentTy = baseTy;
+        Value *ptr = basePtr;
+        for (size_t i = 0; i < indices.size(); ++i) {
+            // 对二维数组，第一次索引取行，第二次取列
+            ptr = builder_.CreateInBoundsGEP(currentTy, ptr, {indices[i]}, node.name_ + ".idx" + std::to_string(i));
+            if (auto arrTy = dyn_cast<ArrayType>(currentTy)) {
+                currentTy = arrTy->getElementType(); // 从二维到一维，再到 int
+            }
+        }
+        currentValue_ = ptr; // 最终得到元素地址
+    }
 }
 
 void CodeGenerator::visit(PrimaryExp &node)
@@ -726,15 +733,6 @@ void CodeGenerator::visit(UnaryExp &node)
     node.operand_->accept(*this);
     Value *v = loadIfPointer(currentValue_);
     // 如果当前操作数是一个地址，需要从地址中加载值
-    if (currentValue_->getType()->isPointerTy())
-    {
-        // 当前值是一个指针，使用 CreateLoad 加载值
-        auto ptrType = llvm::dyn_cast<llvm::PointerType>(currentValue_->getType());
-        if (ptrType)
-        {
-            currentValue_ = builder_.CreateLoad(llvm::Type::getInt32Ty(context_), currentValue_, "loadtmp");
-        }
-    }
     llvm::Value *operandVal = currentValue_;
     switch (node.op)
     {
@@ -822,7 +820,6 @@ void CodeGenerator::visit(LOrExp &node)
     if (node.elements_.size() == 1)
     {
         std::get<std::unique_ptr<Exp>>(node.elements_[0])->accept(*this);
-        // 将结果转换为 0/1
         llvm::Value *zero = llvm::ConstantInt::get(builder_.getInt32Ty(), 0);
         llvm::Value *cmp = builder_.CreateICmpNE(currentValue_, zero, "lor_single");
         currentValue_ = builder_.CreateZExt(cmp, builder_.getInt32Ty(), "lor_single_ext");
@@ -837,45 +834,44 @@ void CodeGenerator::visit(LOrExp &node)
     BasicBlock *falseBB = BasicBlock::Create(context_, "lor.false", function);
     BasicBlock *mergeBB = BasicBlock::Create(context_, "lor.merge", function);
 
-    // 1. 计算第一个子表达式
+    // 计算第一个子表达式
     std::get<std::unique_ptr<Exp>>(node.elements_[0])->accept(*this);
     llvm::Value *val = currentValue_;
-    // 检查是否非零
+
     llvm::Value *zero = llvm::ConstantInt::get(builder_.getInt32Ty(), 0);
     llvm::Value *cond = builder_.CreateICmpNE(val, zero, "lor.cond0");
-    // 如果为真，跳到 trueBB；否则跳到下一个子表达式的块（我们用 falseBB 临时承载）
+    // 如果为真，跳到 trueBB
     builder_.CreateCondBr(cond, trueBB, condBB);
 
     // 2. 处理后续子表达式
     builder_.SetInsertPoint(condBB);
-    // 从第二个元素开始，每隔一个元素是子表达式
     for (size_t i = 2; i < node.elements_.size(); i += 2)
     {
         // 计算当前子表达式
         std::get<std::unique_ptr<Exp>>(node.elements_[i])->accept(*this);
         val = currentValue_;
         cond = builder_.CreateICmpNE(val, zero, "lor.cond");
-        // 如果为真，跳 trueBB，否则继续到下一个子表达式或最终 falseBB
+        // 如果为真，跳trueBB，否则继续到下一个子表达式或最终 falseBB
         BasicBlock *nextBB = (i + 2 < node.elements_.size())
                                  ? BasicBlock::Create(context_, "lor.next", function)
                                  : falseBB; // 最后一个子表达式假时留在 falseBB
         builder_.CreateCondBr(cond, trueBB, nextBB);
-        // 移动插入点到 nextBB 以处理下一轮
+        // 移动插入点到nextBB以处理下一轮
         if (nextBB != falseBB)
             builder_.SetInsertPoint(nextBB);
     }
 
-    // 3. 在 trueBB 中，生成返回 1，然后跳转到 mergeBB
+    // 生成返回1，然后跳转到mergeBB
     builder_.SetInsertPoint(trueBB);
     llvm::Value *one = llvm::ConstantInt::get(builder_.getInt32Ty(), 1);
     builder_.CreateBr(mergeBB);
 
-    // 4. 在 falseBB 中，生成返回 0，然后跳转到 mergeBB
+    // 生成返回0，然后跳转到mergeBB
     builder_.SetInsertPoint(falseBB);
     llvm::Value *zeroRet = llvm::ConstantInt::get(builder_.getInt32Ty(), 0);
     builder_.CreateBr(mergeBB);
 
-    // 5. 在 mergeBB 中，创建 PHI 节点合并结果
+    // 创建PHI节点合并结果
     builder_.SetInsertPoint(mergeBB);
     llvm::PHINode *phi = builder_.CreatePHI(builder_.getInt32Ty(), 2, "lor.result");
     phi->addIncoming(one, trueBB);
@@ -886,7 +882,6 @@ void CodeGenerator::visit(LOrExp &node)
 
 void CodeGenerator::visit(LAndExp &node)
 {
-    // 如果只有一个子表达式，直接计算并转换为 0/1
     if (node.elements_.size() == 1)
     {
         std::get<std::unique_ptr<Exp>>(node.elements_[0])->accept(*this);
@@ -930,17 +925,14 @@ void CodeGenerator::visit(LAndExp &node)
             builder_.SetInsertPoint(nextBB);
     }
 
-    // 3. 在 trueBB 中，生成返回 1，然后跳转到 mergeBB
     builder_.SetInsertPoint(trueBB);
     llvm::Value *one = llvm::ConstantInt::get(builder_.getInt32Ty(), 1);
     builder_.CreateBr(mergeBB);
 
-    // 4. 在 falseBB 中，生成返回 0，然后跳转到 mergeBB
     builder_.SetInsertPoint(falseBB);
     llvm::Value *zeroRet = llvm::ConstantInt::get(builder_.getInt32Ty(), 0);
     builder_.CreateBr(mergeBB);
 
-    // 5. 在 mergeBB 中，创建 PHI 节点合并结果
     builder_.SetInsertPoint(mergeBB);
     llvm::PHINode *phi = builder_.CreatePHI(builder_.getInt32Ty(), 2, "land.result");
     phi->addIncoming(one, trueBB);
@@ -951,12 +943,10 @@ void CodeGenerator::visit(LAndExp &node)
 
 void CodeGenerator::visit(EqExp &node)
 {
-    // 1. 先计算第一个子表达式
     std::get<std::unique_ptr<Exp>>(node.elements_[0])->accept(*this);
     llvm::Value *result = currentValue_;
 
-    // 2. 遍历后续元素
-    TokenType op = TokenType::UNKNOW; // 记录当前操作符
+    TokenType op = TokenType::UNKNOW;
     for (size_t i = 1; i < node.elements_.size(); ++i)
     {
         if (std::holds_alternative<TokenType>(node.elements_[i]))
@@ -981,7 +971,6 @@ void CodeGenerator::visit(EqExp &node)
                 cmp = builder_.CreateICmpNE(result, rhs, "netmp");
             }
 
-            // 将布尔值 (i1) 扩展为 i32 (0 或 1)
             result = builder_.CreateZExt(cmp, builder_.getInt32Ty(), "eqext");
         }
     }
@@ -992,11 +981,11 @@ void CodeGenerator::visit(EqExp &node)
 
 void CodeGenerator::visit(RelExp &node)
 {
-    // 1. 先计算第一个子表达式
+    // 计算第一个子表达式
     std::get<std::unique_ptr<Exp>>(node.elements_[0])->accept(*this);
     llvm::Value *result = currentValue_;
 
-    // 2. 遍历后续元素
+    // 遍历后续元素
     TokenType relOp = TokenType::UNKNOW;
     for (size_t i = 1; i < node.elements_.size(); ++i)
     {
@@ -1007,11 +996,9 @@ void CodeGenerator::visit(RelExp &node)
         }
         else
         {
-            // 子表达式
             std::get<std::unique_ptr<Exp>>(node.elements_[i])->accept(*this);
             llvm::Value *rhs = currentValue_;
 
-            // 根据 relOp 生成相应的比较
             llvm::Value *cmp = nullptr;
             switch (relOp)
             {
@@ -1028,11 +1015,10 @@ void CodeGenerator::visit(RelExp &node)
                 cmp = builder_.CreateICmpSGE(result, rhs, "getmp");
                 break;
             default:
-                // 不应该到这里
+                // 直接指向下一个元素，直接返回
                 break;
             }
 
-            // 将 i1 扩展为 i32
             result = builder_.CreateZExt(cmp, builder_.getInt32Ty(), "rel_ext");
         }
     }
@@ -1050,12 +1036,27 @@ void CodeGenerator::visit(CallExp &node)
         return;
     }
     std::vector<llvm::Value *> args;
-    for (auto &arg : node.args_)
+    for (size_t i = 0; i < node.args_.size(); ++i)
     {
-        arg->accept(*this);
-        args.push_back(currentValue_);
+        node.args_[i]->accept(*this);
+        Value *argVal = currentValue_;
+        Type *paramTy = callee->getFunctionType()->getParamType(i);
+
+        // 处理数组参数类型适配
+        if (argVal->getType()->isPointerTy() &&
+            paramTy->isPointerTy() &&
+            argVal->getType()->isArrayTy())
+        {
+
+            // 生成GEP指令降级指针层级
+            Value *zero = builder_.getInt32(0);
+            Value *indices[] = {zero, zero};
+            argVal = builder_.CreateInBoundsGEP(argVal->getType()->getArrayElementType(), argVal, indices, "array.param.adjust");
+        }
+        args.push_back(argVal);
     }
-    currentValue_ = builder_.CreateCall(callee, args, "calltmp");
+    currentValue_ = builder_.CreateCall(callee, args);
+    //currentType_ = nullptr;
 }
 
 void CodeGenerator::visit(Number &node)
@@ -1063,38 +1064,26 @@ void CodeGenerator::visit(Number &node)
     currentValue_ = llvm::ConstantInt::get(llvm::Type::getInt32Ty(context_), node.value_);
 }
 
-// 实现 getint 函数，返回 i32 类型整数，且无参数
 Function *CodeGenerator::createGetintFunction(Module *module, LLVMContext &context)
 {
-    // 函数类型：i32 getint(void)
+    // i32 getint(void)
     FunctionType *funcType = FunctionType::get(Type::getInt32Ty(context), false);
     Function *getintFunc = Function::Create(funcType, GlobalValue::ExternalLinkage, "getint", module);
 
-    // 创建函数入口基本块
     BasicBlock *entryBB = BasicBlock::Create(context, "entry", getintFunc);
     IRBuilder<> builder(entryBB);
 
-    // 创建一个全局常量格式字符串 "%d"
-    // 注意：字符串内容中需要加上结尾的 '\0'
     Constant *formatStr = builder.CreateGlobalStringPtr("%d", "fmt");
 
-    // 在函数入口分配一个局部变量用于存储输入整数
     AllocaInst *nVar = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "n");
 
-    // 声明 scanf 函数：原型为 int scanf(i8*, ...);
-    // 构造函数类型：返回 i32，参数类型为 i8*，可变参数
-    FunctionType *scanfType = FunctionType::get(
-        Type::getInt32Ty(context),
-        {Type::getInt8PtrTy(context)},
-        true);
-    // 使用 getOrInsertFunction 如果模块中已存在 scanf 则返回，否则创建一个新的声明
-    Function *scanfFunc = cast<Function>(
-        module->getOrInsertFunction("scanf", scanfType).getCallee());
+    FunctionType *scanfType = FunctionType::get(Type::getInt32Ty(context), {Type::getInt8PtrTy(context)}, true);
 
-    // 调用 scanf，传入格式字符串和 nVar 的地址
+    Function *scanfFunc = cast<Function>(module->getOrInsertFunction("scanf", scanfType).getCallee());
+
     builder.CreateCall(scanfFunc, {formatStr, nVar}, "scanfCall");
 
-    // 加载 nVar 的值
+    // 加载nVar的值
     Value *nVal = builder.CreateLoad(Type::getInt32Ty(context), nVar, "n.load");
 
     // 返回读取到的整数
@@ -1209,7 +1198,6 @@ void CodeGenerator::ClearVarScope()
 
 llvm::Value *CodeGenerator::loadIfPointer(llvm::Value *v)
 {
-    // 如果当前操作数是一个地址，需要从地址中加载值
     if (v->getType()->isPointerTy())
     {
         auto ptrTy = llvm::dyn_cast<llvm::PointerType>(v->getType());
