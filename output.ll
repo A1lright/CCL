@@ -19,7 +19,9 @@ entry:
   %a.addr = alloca ptr, align 8
   store ptr %0, ptr %a.addr, align 8
   %a.load = load ptr, ptr %a.addr, align 8
-  store i32 100, i32 0, align 4
+  %a.idx0 = getelementptr inbounds [2 x i32], ptr %a.load, i32 0, i32 1
+  %a.idx1 = getelementptr inbounds i32, ptr %a.idx0, i32 0, i32 0
+  store i32 100, ptr %a.idx1, align 4
   ret void
 }
 

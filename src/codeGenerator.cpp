@@ -735,7 +735,7 @@ void CodeGenerator::visit(LVal &node)
     // innerType为IntergerTy则为一维数组，否则为二维数组
 
     // 处理一维数组索引
-    if (innerType->isIntegerTy())
+    if (baseTy->isArrayTy()&&innerType->isIntegerTy()&&indices.size()==1)
     {
         // 处理一维数组
         if (indices.size() > 1)
@@ -750,13 +750,10 @@ void CodeGenerator::visit(LVal &node)
     }
 
     // 处理二维数组
-    if (innerType->isArrayTy())
+    if (innerType->isArrayTy()||indices.size()==2)
     {
-        int istowdim = false;
-        if (innerType->isArrayTy())
-        {
-            istowdim = true;
-        }
+        int istowdim = true;
+
         for (size_t i = 0; i < indices.size(); ++i)
         {
             // 对二维数组，第一次索引取行，第二次取列
@@ -764,10 +761,15 @@ void CodeGenerator::visit(LVal &node)
             {
                 basePtr = builder_.CreateInBoundsGEP(baseTy, basePtr, {builder_.getInt32(0), indices[i]}, node.name_ + ".idx" + std::to_string(i));
             }
-            else
+             else //if(baseTy->isArrayTy())
             {
+                // 对于二维数组，第二次索引取列
                 basePtr = builder_.CreateInBoundsGEP(baseTy, basePtr, {builder_.getInt32(0), indices[i]}, node.name_ + ".idx" + std::to_string(i));
             }
+            // else
+            // {
+            //     basePtr = builder_.CreateInBoundsGEP(baseTy, basePtr, {indices[i]}, node.name_ + ".idx" + std::to_string(i));
+            // }
 
             if (auto arrTy = dyn_cast<ArrayType>(baseTy))
             {
