@@ -468,9 +468,10 @@ namespace AST
         {
             Plus,
             Minus,
-            Not
+            Not,
+            Init
         };
-        Op op = Op::Plus;
+        Op op = Op::Init;
         std::unique_ptr<Exp> operand_; // 可能是函数调用或一元表达式
 
         void accept(Visitor &v) override
@@ -512,7 +513,7 @@ namespace AST
     {
     public:
         LAndExp() : Exp(ND_LAndExp) {}
-        std::vector<std::variant<std::unique_ptr<Exp>, TokenType>>elements_;
+        std::vector<std::variant<std::unique_ptr<Exp>, TokenType>> elements_;
 
         void accept(Visitor &v) override { v.visit(*this); }
     };

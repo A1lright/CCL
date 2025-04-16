@@ -151,7 +151,7 @@ int EvalConstant::VisitUnaryExp(UnaryExp *exp)
     case UnaryExp::Op::Not:
         return (operand == 0) ? 1 : 0;
     default:
-        throw std::runtime_error("Unknown unary operator.");
+        return operand;
     }
 }
 
@@ -325,14 +325,15 @@ int EvalConstant::VisitCallExp(CallExp *exp)
 
 int EvalConstant::VisitInitVal(InitVal *initVal)
 {
-    if(std::holds_alternative<std::unique_ptr<Exp>>(initVal->value_))
+    if (std::holds_alternative<std::unique_ptr<Exp>>(initVal->value_))
     {
         return Eval(std::get<std::unique_ptr<Exp>>(initVal->value_).get());
     }
 }
 
-int EvalConstant::VisitConstInitVal(ConstInitVal *constInitVal){
-    if(std::holds_alternative<std::unique_ptr<Exp>>(constInitVal->value_))
+int EvalConstant::VisitConstInitVal(ConstInitVal *constInitVal)
+{
+    if (std::holds_alternative<std::unique_ptr<Exp>>(constInitVal->value_))
     {
         return Eval(std::get<std::unique_ptr<Exp>>(constInitVal->value_).get());
     }

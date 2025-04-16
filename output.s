@@ -19,46 +19,47 @@ getint:
 	.size	getint, .Lfunc_end0-getint
 	.cfi_endproc
 
+	.globl	func
+	.p2align	4, 0x90
+	.type	func,@function
+func:
+	.cfi_startproc
+	movq	%rdi, -8(%rsp)
+	movl	$100, 0
+	retq
+.Lfunc_end1:
+	.size	func, .Lfunc_end1-func
+	.cfi_endproc
+
+	.section	.rodata.cst16,"aM",@progbits,16
+	.p2align	4, 0x0
+.LCPI2_0:
+	.long	1
+	.long	2
+	.long	3
+	.long	4
+	.text
 	.globl	main
 	.p2align	4, 0x90
 	.type	main,@function
 main:
 	.cfi_startproc
-	subq	$40, %rsp
-	.cfi_def_cfa_offset 48
-	xorps	%xmm0, %xmm0
-	movups	%xmm0, 4(%rsp)
-	movq	$0, 20(%rsp)
-	movabsq	$34359738368, %rax
-	movq	%rax, 36(%rsp)
-	movl	$1, 4(%rsp)
-	movl	$4, 16(%rsp)
-	movq	$7, 28(%rsp)
-	movl	$9, 52(%rsp)
-	movl	$.Lfmt.1, %edi
-	movl	$1, %esi
-	movl	$4, %edx
-	movl	$7, %ecx
-	xorl	%eax, %eax
-	callq	printf@PLT
+	subq	$24, %rsp
+	.cfi_def_cfa_offset 32
+	movaps	.LCPI2_0(%rip), %xmm0
+	movups	%xmm0, 8(%rsp)
+	leaq	8(%rsp), %rdi
+	callq	func@PLT
 	movl	16(%rsp), %esi
-	movl	28(%rsp), %edx
-	movl	40(%rsp), %ecx
-	movl	$.Lfmt.2, %edi
-	xorl	%eax, %eax
-	callq	printf@PLT
-	movl	28(%rsp), %esi
-	movl	40(%rsp), %edx
-	movl	52(%rsp), %ecx
-	movl	$.Lfmt.3, %edi
+	movl	$.Lfmt.1, %edi
 	xorl	%eax, %eax
 	callq	printf@PLT
 	xorl	%eax, %eax
-	addq	$40, %rsp
+	addq	$24, %rsp
 	.cfi_def_cfa_offset 8
 	retq
-.Lfunc_end1:
-	.size	main, .Lfunc_end1-main
+.Lfunc_end2:
+	.size	main, .Lfunc_end2-main
 	.cfi_endproc
 
 	.type	.Lfmt,@object
@@ -69,17 +70,7 @@ main:
 
 	.type	.Lfmt.1,@object
 .Lfmt.1:
-	.asciz	"\"%d %d %d\\n\""
-	.size	.Lfmt.1, 13
-
-	.type	.Lfmt.2,@object
-.Lfmt.2:
-	.asciz	"\"%d %d %d\\n\""
-	.size	.Lfmt.2, 13
-
-	.type	.Lfmt.3,@object
-.Lfmt.3:
-	.asciz	"\"%d %d %d\\n\""
-	.size	.Lfmt.3, 13
+	.asciz	"\"%d\\n\""
+	.size	.Lfmt.1, 7
 
 	.section	".note.GNU-stack","",@progbits

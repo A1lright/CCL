@@ -629,6 +629,7 @@ void CodeGenerator::visit(ReturnStmt &node)
     if (node.exp_)
     {
         node.exp_->accept(*this);
+        currentValue_ = loadIfPointer(currentValue_);
         builder_.CreateRet(currentValue_);
     }
     else
@@ -679,7 +680,7 @@ void CodeGenerator::visit(IOStmt &node)
     }
 }
 
-// 1.普通变量 2.一维数组 3.二维数组
+// 1.普通变量 2.一维数组 3.二维数组。 统一返回元素地址
 void CodeGenerator::visit(LVal &node)
 {
     // 查找变量符号（支持局部和全局变量）
@@ -692,7 +693,16 @@ void CodeGenerator::visit(LVal &node)
         currentValue_ = nullptr;
         return;
     }
-    currentValue_ = basePtr;
+
+    // 1. 处理普通变量
+    if (baseTy->isIntegerTy())
+    {
+        // 直接返回变量地址
+        currentValue_ = basePtr;
+        return;
+    }
+
+    // 2. 处理数组
 
     SmallVector<Value *, 4> indices;
     for (auto &idxExp : node.indices_)
@@ -701,16 +711,7 @@ void CodeGenerator::visit(LVal &node)
         indices.push_back(loadIfPointer(currentValue_)); // 直接使用用户提供的索引值（如i和j）
     }
 
-    // 处理一维数组索引
-    if (indices.size() == 1)
-    {
-        // 一维数组
-        basePtr = builder_.CreateInBoundsGEP(baseTy, basePtr, {builder_.getInt32(0), indices[0]}, node.name_ + ".idx");
-        currentValue_ = basePtr; // 最终得到元素地址
-        return;
-    }
-
-    // 处理数组索引（关键修正：删除硬编码的0，直接使用用户索引）
+    // PointerType* 类型不可作为参数传入， 若值是函数参数中创建的数组，类型为PointerType* ，需要转换为原指向类型。
     if (baseTy->isPointerTy())
     {
         auto iter = pointerTypeToArray_.find(baseTy); // 查找键为 key 的元素
@@ -720,14 +721,38 @@ void CodeGenerator::visit(LVal &node)
         }
         else
         {
-            // 键不存在时的处理
+            std::cout << "未找到指针类型对应的数组类型" << std::endl;
         }
     }
+
+    Type *innerType = nullptr;
+
+    // 获取类型信息
     if (baseTy->isArrayTy())
     {
-        bool istowdim = false;
-        // 获取nei
-        Type *innerType = baseTy->getArrayElementType();
+        innerType = baseTy->getArrayElementType(); // 从二维到一维
+    }
+    // innerType为IntergerTy则为一维数组，否则为二维数组
+
+    // 处理一维数组索引
+    if (innerType->isIntegerTy())
+    {
+        // 处理一维数组
+        if (indices.size() > 1)
+        {
+            std::cout << "一维数组索引错误: " << node.name_ << "\n";
+            return;
+        }
+        // 直接返回变量地址
+        basePtr = builder_.CreateInBoundsGEP(baseTy, basePtr, {builder_.getInt32(0), indices[0]}, node.name_ + ".idx");
+        currentValue_ = basePtr; // 最终得到元素地址
+        isAddr = true;
+    }
+
+    // 处理二维数组
+    if (innerType->isArrayTy())
+    {
+        int istowdim = false;
         if (innerType->isArrayTy())
         {
             istowdim = true;
@@ -741,7 +766,7 @@ void CodeGenerator::visit(LVal &node)
             }
             else
             {
-                basePtr = builder_.CreateInBoundsGEP(baseTy, basePtr, {indices[i]}, node.name_ + ".idx" + std::to_string(i));
+                basePtr = builder_.CreateInBoundsGEP(baseTy, basePtr, {builder_.getInt32(0), indices[i]}, node.name_ + ".idx" + std::to_string(i));
             }
 
             if (auto arrTy = dyn_cast<ArrayType>(baseTy))
@@ -774,26 +799,28 @@ void CodeGenerator::visit(PrimaryExp &node)
 void CodeGenerator::visit(UnaryExp &node)
 {
     node.operand_->accept(*this);
-    if (isAddr)
-        return;
-    currentValue_ = loadIfPointer(currentValue_); // TODO 需改进
-    // 如果当前操作数是一个地址，需要从地址中加载值
-    llvm::Value *operandVal = currentValue_;
+    // 处理一元运算符,需区分是否为地址，若Unary有操作符，则转换地址进行计算，否则返回地址，由mul或add处理
+    // llvm::Value *operandVal = currentValue_;
     switch (node.op)
     {
     case UnaryExp::Op::Plus:
-        currentValue_ = operandVal;
+        currentValue_ = loadIfPointer(currentValue_);
+        // currentValue_ = operandVal;
         break;
     case UnaryExp::Op::Minus:
-        currentValue_ = builder_.CreateNeg(operandVal, "negtmp");
+        currentValue_ = loadIfPointer(currentValue_);
+        currentValue_ = builder_.CreateNeg(currentValue_, "negtmp");
         break;
     case UnaryExp::Op::Not:
     {
+        currentValue_ = loadIfPointer(currentValue_);
         llvm::Value *zero = ConstantInt::get(Type::getInt32Ty(context_), 0);
-        currentValue_ = builder_.CreateICmpEQ(operandVal, zero, "nottmp");
+        currentValue_ = builder_.CreateICmpEQ(currentValue_, zero, "nottmp");
         currentValue_ = builder_.CreateZExt(currentValue_, Type::getInt32Ty(context_), "booltmp");
         break;
     }
+    default:
+        break;
     }
 }
 
@@ -814,6 +841,8 @@ void CodeGenerator::visit(AddExp &node)
             }
             else
             {
+                result = loadIfPointer(result);               // 处理地址
+                currentValue_ = loadIfPointer(currentValue_); // 处理地址
                 if (doAdd)
                     result = builder_.CreateAdd(result, currentValue_, "addtmp");
                 else
@@ -848,6 +877,8 @@ void CodeGenerator::visit(MulExp &node)
             }
             else
             {
+                result = loadIfPointer(result);               // 处理地址
+                currentValue_ = loadIfPointer(currentValue_); // 处理地址
                 result = builder_.CreateMul(result, currentValue_, "multmp");
             }
         }
@@ -1090,6 +1121,7 @@ void CodeGenerator::visit(CallExp &node)
         // 处理二维数组参数：将二维数组转换为指向内层数组的指针
         if (paramTy->isIntegerTy())
         {
+            argVal = loadIfPointer(argVal); // 处理地址
             // 如果参数类型是整数，直接使用
         }
         else

@@ -6,19 +6,7 @@
 #include <iostream>
 #include <fstream>
 
-// 从文件中读取源代码
-std::string getFile(std::string filePath)
-{
-    std::ifstream file(filePath);
-    if (!file.is_open())
-    {
-        std::cerr << "无法打开文件: " << filePath << std::endl;
-    }
-    // 使用迭代器读取文件内容
-    std::string sourceCode((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    file.close();
-    return sourceCode;
-}
+std::string getFile(std::string filePath);
 
 int main(int argc, char *argv[])
 {
@@ -59,4 +47,18 @@ int main(int argc, char *argv[])
     errorManager.reportErrors();
 
     return 0;
+}
+
+// 从文件中读取源代码
+std::string getFile(std::string filePath)
+{
+    std::ifstream file(filePath);
+    if (!file.is_open())
+    {
+        std::cerr << "无法打开文件: " << filePath << std::endl;
+    }
+    // 使用迭代器读取文件内容
+    std::string sourceCode((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+    return sourceCode;
 }
