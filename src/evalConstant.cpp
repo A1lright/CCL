@@ -61,11 +61,11 @@ int EvalConstant::VisitNumberExp(Number *exp)
 
 int EvalConstant::VisitAddExp(AddExp *exp)
 {
-    // AddExp 中的 elements_ 按顺序存储：第一个元素必须是一个表达式指针，
-    // 后续依次为运算符（TokenType）和表达式指针。
+    // 第一个元素必须是一个表达式指针
+    // 后续依次为运算符（TokenType）和表达式指针
     bool first = true;
     int result = 0;
-    TokenType op = TokenType::UNKNOW; // 初始无效运算符
+    TokenType op = TokenType::UNKNOW;
     for (auto &elem : exp->elements_)
     {
         if (std::holds_alternative<std::unique_ptr<Exp>>(elem))
@@ -97,7 +97,6 @@ int EvalConstant::VisitAddExp(AddExp *exp)
 
 int EvalConstant::VisitMulExp(MulExp *exp)
 {
-    // MulExp 的格式与 AddExp 类似，只不过支持 * / %
     bool first = true;
     int result = 0;
     TokenType op = TokenType::UNKNOW;
@@ -158,9 +157,7 @@ int EvalConstant::VisitUnaryExp(UnaryExp *exp)
 
 int EvalConstant::VisitLValExp(LVal *exp)
 {
-    // 对于常量表达式中的变量引用，
-    // 如果变量是常量则应在语义分析阶段已将其值求出；
-    // 这里简单示例返回 0 或抛出异常。
+    // 对于常量表达式中的变量引用，如果变量是常量则应在语义分析阶段已将其值求出；
     return 0;
     throw std::runtime_error("LVal cannot be evaluated as a constant expression.");
 }

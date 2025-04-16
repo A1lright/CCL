@@ -1,5 +1,6 @@
 #ifndef SEMANTICANALYZER_H
 #define SEMANTICANALYZER_H
+
 #include "symbolTable.h"
 #include "astSysy.h"
 #include "evalConstant.h"
@@ -8,15 +9,15 @@
 
 using namespace AST;
 
-class SemanticAnalyzer : public Visitor {
+class SemanticAnalyzer : public Visitor
+{
 public:
     SymbolTable symbolTable;
     ErrorManager &errorManager; // 错误管理器
-    EvalConstant evalConstant; // 用于常量表达式求值
+    EvalConstant evalConstant;  // 用于常量表达式求值
 
-    SemanticAnalyzer() : errorManager(ErrorManager::getInstance()) {
-        // 进入全局作用域
-        //symbolTable.enterScope();
+    SemanticAnalyzer() : errorManager(ErrorManager::getInstance())
+    {
     }
 
     // 遍历编译单元
@@ -58,10 +59,9 @@ public:
     void visit(EqExp &node) override;
     void visit(RelExp &node) override;
     void visit(CallExp &node) override;
-    void visit(FuncType &) ;
+    void visit(FuncType &);
 
 private:
-    // 以下为辅助函数，用于常量表达式求值（这里只给出简单示例，实际需完善）
     int evaluateConstExp(ConstInitVal *initVal);
     int evaluateExp(Node *node);
     bool checkAndEvaluateInitList(const std::vector<std::unique_ptr<InitVal>> &initList, const std::vector<int> &dimensions, size_t currentDim, EvalConstant &evaluator, std::vector<int> &evaluatedValues, ErrorManager &errorManager, const std::string &varName);

@@ -9,7 +9,6 @@
 #include "llvm/IR/Value.h"
 #include "ErrorManager.h"
 
-
 // 符号类型分类
 enum SymbolType
 {
@@ -26,7 +25,7 @@ class Symbol
 public:
     std::string name_;
     SymbolType symbolType_;
-    TokenType dataType_; // 从TokenType继承的类型如INTTK, VOIDTK等
+    TokenType dataType_;
     int lineDefined_;
 
     Symbol() = default;
@@ -54,7 +53,7 @@ public:
     std::vector<int> dimensions_; // 数组的维度
     std::vector<int> initValues_; // 数组初始化值
 
-    llvm::Value *allocaInst_;     // 数组对应的内存地址
+    llvm::Value *allocaInst_; // 数组对应的内存地址
 
     ArraySymbol() = default;
 };
@@ -73,7 +72,7 @@ public:
 class SymbolTable
 {
     using Scope = std::unordered_map<std::string, std::unique_ptr<Symbol>>;
-    std::vector<Scope> scopes_; // 作用域栈,最终全局函数，全局变量，全局常量都在这里
+    std::vector<Scope> scopes_;
 
     void addBuiltinFunctions();
 
@@ -86,13 +85,13 @@ public:
     // 退出当前作用域
     void exitScope();
 
-    // 添加符号（返回是否成功）
+    // 添加符号
     bool addSymbol(std::unique_ptr<Symbol> symbol);
 
-    // 查找符号（从内到外）
+    // 查找符号从内到外
     Symbol *lookup(const std::string &name);
 
-    // 查找符号（仅在当前作用域内）
+    // 在当前作用域内
     Symbol *lookupInCurrentScope(const std::string &name);
 };
 

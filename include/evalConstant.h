@@ -1,13 +1,14 @@
-#pragma once
+#ifndef EVAL_CONSTANT_H
+#define EVAL_CONSTANT_H
 
 #include "astSysy.h"
 #include <variant>
 using namespace AST;
 
-class EvalConstant {
+class EvalConstant
+{
 public:
-    // 入口函数，传入 AST 基类指针，返回求值结果
-    // 如果遇到无法求值的情况，将抛出 std::runtime_error
+    // 入口函数，传入 AST 基类指针，返回求值结果，只支持int型
     int Eval(Node *node);
 
 private:
@@ -25,3 +26,5 @@ private:
     int VisitInitVal(InitVal *initVal);
     int VisitConstInitVal(ConstInitVal *constInitVal);
 };
+
+#endif // EVAL_CONSTANT_H

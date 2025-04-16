@@ -70,7 +70,6 @@ public:
     void visit(UnaryExp &node);
     void visit(AddExp &node);
     void visit(MulExp &node);
-
     void visit(LOrExp &node);
     void visit(LAndExp &node);
     void visit(EqExp &node);
@@ -78,11 +77,11 @@ public:
 
     void visit(CallExp &node);
     void visit(Number &node);
-
+    //函数
     void visit(FuncParam &node);
     void visit(FuncDef &node);
     void visit(MainFuncDef &node);
-
+    
     void visit(BType &node);
     void visit(InitVal &node);
     void visit(ConstInitVal &node);
@@ -118,7 +117,10 @@ private:
 
     EvalConstant evalConstant;
 
-    llvm::Type *currentType_ = nullptr;
+    // PointerType * 与 ArrayType * 之间的转换
+    std::unordered_map<Type*,Type *> pointerTypeToArray_; 
+
+    bool isAddr; // 是否是地址
 };
 
 #endif // CODEGENERATOR_H

@@ -8,6 +8,7 @@ build/
 *.out
 *.exe
 *.ll
+*.s
 
 # IDE 和编辑器的配置文件
 .vscode/

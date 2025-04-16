@@ -78,8 +78,8 @@ public:
         std::cout << "<VarDecl>" << std::endl;
     }
 
-    void visit(ExpStmt &) {
-        
+    void visit(ExpStmt &)
+    {
     }
 
     // 语句
@@ -195,42 +195,15 @@ public:
         outputNonTerminal("LVal"); // 输出 <LVal>
     }
 
-    // void visit(BinaryExp &node)
-    // {
-    //     node.left_->accept(*this); // 递归解析左操作数
-    //     switch (node.op)
-    //     {
-    //     case BinaryExp::Op::Add:
-    //         std::cout << "+" << std::endl;
-    //         break;
-    //     case BinaryExp::Op::And:
-    //         std::cout << "&" << std::endl;
-    //         break;
-    //     case BinaryExp::Op::Div:
-    //         std::cout << "/" << std::endl;
-    //         break;
-    //     case BinaryExp::Op::Eq:
-    //         std::cout << "=" << std::endl;
-    //         break;
-    //     case BinaryExp::Op::Ge:
-    //         std::cout << ">" << std::endl;
-    //     }
-    //     node.right_->accept(*this);  // 递归解析右操作数
-    //     outputNonTerminal("AddExp"); // 输出父级非终结符（如 <AddExp>）
-    // }
-
     void visit(UnaryExp &node)
     {
         // 逻辑与InitVal类似，但只能包含ConstExp
         node.operand_->accept(*this);
-        outputNonTerminal("UnaryExp"); // 输出父级非终结符（如 <UnaryExp>）
+        outputNonTerminal("UnaryExp");
     }
 
     void visit(AddExp &node)
     {
-
-        // 处理所有元素（操作数和运算符交替存储）
-
         for (auto &elem : node.elements_)
         {
             if (auto ptr = std::get_if<std::unique_ptr<Exp>>(&elem))
@@ -247,7 +220,6 @@ public:
     }
     void visit(MulExp &node)
     {
-
         for (auto &elem : node.elements_)
         {
             if (auto ptr = std::get_if<std::unique_ptr<Exp>>(&elem))
@@ -265,7 +237,6 @@ public:
 
     void visit(LOrExp &node)
     {
-
         for (auto &elem : node.elements_)
         {
             if (auto ptr = std::get_if<std::unique_ptr<Exp>>(&elem))
@@ -282,7 +253,6 @@ public:
 
     void visit(LAndExp &node)
     {
-
         for (auto &elem : node.elements_)
         {
             if (auto ptr = std::get_if<std::unique_ptr<Exp>>(&elem))
@@ -299,7 +269,6 @@ public:
 
     void visit(EqExp &node)
     {
-
         for (auto &elem : node.elements_)
         {
             if (auto ptr = std::get_if<std::unique_ptr<Exp>>(&elem))
@@ -317,7 +286,6 @@ public:
 
     void visit(RelExp &node)
     {
-
         for (auto &elem : node.elements_)
         {
             if (auto ptr = std::get_if<std::unique_ptr<Exp>>(&elem))
@@ -375,13 +343,11 @@ public:
             }
             std::cout << "]";
         }
-        outputNonTerminal("FuncParam"); // 输出 <FuncParam>（可选，根据文档要求）
+        outputNonTerminal("FuncParam");
     }
 
     void visit(FuncDef &node) override
     {
-        // 输出函数名和参数
-        // outputToken(node.name_);   // 假设节点中保存了原始Token
         std::cout << node.name_;
         std::cout << "(" << std::endl;
         for (auto &param : node.params_)
@@ -404,7 +370,6 @@ public:
     void visit(BType &node)
     {
         std::cout << "INTTK int" << std::endl;
-        // std::cout << node.typeName_<<std::endl;
     }
 
     void visit(InitVal &node)
@@ -421,9 +386,7 @@ public:
         else
         {
             auto *list = std::get_if<std::vector<std::unique_ptr<AST::InitVal>>>(&node.value_);
-
-            std::cout << "{"; // 输出 '{'
-                              // auto initValVector = std::get<std::vector<std::unique_ptr<AST::InitVal>>>(node.value_);
+            std::cout << "{";
             for (size_t i = 0; i < (*list).size(); ++i)
             {
 
@@ -446,15 +409,12 @@ public:
         if (std::holds_alternative<std::unique_ptr<AST::Exp>>(node.value_))
         {
             auto *exp = std::get_if<std::unique_ptr<AST::Exp>>(&node.value_);
-            // auto exp = std::move(std::get<std::unique_ptr<AST::Exp>>(node.value_));
-            //  解析单个表达式
 
             (*exp)->accept(*this);
         }
         else
         {
             auto *list = std::get_if<std::vector<std::unique_ptr<AST::ConstInitVal>>>(&node.value_);
-            // auto initValVector = std::get<std::vector<std::unique_ptr<AST::ConstInitVal>>>(node.value_);
 
             std::cout << "(" << std::endl;
             for (size_t i = 0; i < (*list).size(); ++i)
@@ -481,7 +441,6 @@ public:
         if (std::holds_alternative<std::unique_ptr<AST::Exp>>(node.operand_))
         {
             auto *exp = std::get_if<std::unique_ptr<AST::Exp>>(&node.operand_);
-            //  解析单个表达式
 
             (*exp)->accept(*this);
             outputNonTerminal("Exp");
@@ -520,7 +479,5 @@ private:
         }
     }
 };
-
-
 
 #endif // SYNTAXOUTPUTVISITOR_HPP

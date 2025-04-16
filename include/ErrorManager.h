@@ -6,9 +6,9 @@
 
 enum class ErrorLevel
 {
-    INFO,    // 信息
-    WARNING, // 警告
-    ERROR    // 错误
+    INFO,
+    WARNING,
+    ERROR
 };
 
 enum class ErrorType
@@ -21,7 +21,7 @@ enum class ErrorType
 
 struct ErrorInfo
 {
-    ErrorLevel level;    // 错误级别（INFO, WARNING, ERROR）
+    ErrorLevel level;    // 错误级别
     char errorCode;      // 规范中的a-m错误码
     int lineNumber;      // 错误行号
     std::string message; // 错误描述
@@ -45,7 +45,6 @@ public:
         return instance;
     }
 
-    // 添加错误信息
     void addError(ErrorLevel level, char code, int line, const std::string &msg, ErrorType type)
     {
         if (level == ErrorLevel::ERROR)
@@ -55,7 +54,6 @@ public:
         errors_.emplace_back(level, code, line, msg, type);
     }
 
-    // 打印错误信息
     void reportErrors() const
     {
         for (const auto &error : errors_)
@@ -99,10 +97,8 @@ public:
         }
     }
 
-    // 检查是否存在错误
     bool hasErrors() const { return !errors_.empty(); }
 
-    // 检查是否存在致命错误
     bool hasFatal() const { return hasFatalError_; }
 
     // 清空错误信息

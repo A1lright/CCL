@@ -55,7 +55,10 @@ namespace AST
         };
         Kind kind_;
         Node(Kind kind) : kind_(kind) {}
-        Kind getKind() const { return kind_; }
+        Kind getKind() const
+        {
+            return kind_;
+        }
 
         virtual ~Node() = default;
         virtual void accept(Visitor &visitor) = 0;
@@ -84,22 +87,22 @@ namespace AST
 
     // 声明节点
     class ConstDef;  // 常量定义
-    class ConstDecl; // 常量声明（const int a=1, b[2]={1,2};）
-    class VarDef;    // 变量定义（int a; 或 int a[2][3] = {{1,2}, {3,4}};）
-    class VarDecl;   // 变量声明 （int a,b[2];）
+    class ConstDecl; // 常量声明
+    class VarDef;    // 变量定义
+    class VarDecl;   // 变量声明
 
     // 函数与形参节点
-    class FuncParam;   // 函数形参（int a[] 或 int a[2][3]）
-    class FuncDef;     // 函数定义（int func(int a, int b[]) { ... }）
-    class MainFuncDef; // 主函数定义（int main() { ... }）
-    class FuncType;    // 函数返回类型（int 或 void）
+    class FuncParam;   // 函数形参
+    class FuncDef;     // 函数定义
+    class MainFuncDef; // 主函数定义
+    class FuncType;    // 函数返回类型
 
     // 语句节点
-    class ExpStmt;    // 表达式语句（exp;）
-    class Block;      // 语句块（{ ... }）
-    class AssignStmt; // 赋值语句（a = 5;）
-    class IfStmt;     // if语句（if (cond) stmt [else stmt]）
-    class WhileStmt;  // while语句（while (cond) stmt）
+    class ExpStmt;    // 表达式语句
+    class Block;      // 语句块
+    class AssignStmt; // 赋值语句
+    class IfStmt;     // if语句
+    class WhileStmt;  // while语句
     class ReturnStmt; // （return exp; 或 return;）
     class IOStmt;     // 输入输出语句（getint/printf）
 
@@ -112,8 +115,8 @@ namespace AST
     class LAndExp;
     class EqExp;
     class RelExp;
-    class UnaryExp; // 一元运算表达式（-a, !cond）
-    class CallExp;  // 函数调用表达式（func(a, b)）
+    class UnaryExp; // 一元运算表达式
+    class CallExp;  // 函数调用表达式
     class Number;   // 字面量（数值常量）
 
     // 编译单元节点
@@ -476,16 +479,12 @@ namespace AST
         }
     };
 
-    // 加法表达式层（对应 + - 运算）
+    // 加法表达式层
     class AddExp : public Exp
     {
     public:
         AddExp() : Exp(ND_AddExp) {}
-        std::vector<std::variant<
-            std::unique_ptr<Exp>, // 操作数
-            TokenType             // 运算符（PLUS/MINUS）
-            >>
-            elements_;
+        std::vector<std::variant<std::unique_ptr<Exp>, TokenType>> elements_;
 
         void accept(Visitor &v) override { v.visit(*this); }
     };
@@ -495,11 +494,7 @@ namespace AST
     {
     public:
         MulExp() : Exp(ND_MulExp) {}
-        std::vector<std::variant<
-            std::unique_ptr<Exp>, // 操作数
-            TokenType             // 运算符（MULT/DIV/MOD）
-            >>
-            elements_;
+        std::vector<std::variant<std::unique_ptr<Exp>, TokenType>> elements_;
 
         void accept(Visitor &v) override { v.visit(*this); }
     };
@@ -508,11 +503,7 @@ namespace AST
     {
     public:
         LOrExp() : Exp(ND_LOrExp) {}
-        std::vector<std::variant<
-            std::unique_ptr<Exp>, // 操作数
-            TokenType             // 运算符（||）
-            >>
-            elements_;
+        std::vector<std::variant<std::unique_ptr<Exp>, TokenType>> elements_;
 
         void accept(Visitor &v) override { v.visit(*this); }
     };
@@ -521,11 +512,7 @@ namespace AST
     {
     public:
         LAndExp() : Exp(ND_LAndExp) {}
-        std::vector<std::variant<
-            std::unique_ptr<Exp>, // 操作数
-            TokenType             // 运算符（&&）
-            >>
-            elements_;
+        std::vector<std::variant<std::unique_ptr<Exp>, TokenType>>elements_;
 
         void accept(Visitor &v) override { v.visit(*this); }
     };
@@ -534,11 +521,7 @@ namespace AST
     {
     public:
         EqExp() : Exp(ND_EqExp) {}
-        std::vector<std::variant<
-            std::unique_ptr<Exp>, // 操作数
-            TokenType             // 运算符（==/!=）
-            >>
-            elements_;
+        std::vector<std::variant<std::unique_ptr<Exp>, TokenType>> elements_;
 
         void accept(Visitor &v) override { v.visit(*this); }
     };
@@ -547,11 +530,7 @@ namespace AST
     {
     public:
         RelExp() : Exp(ND_RelExp) {}
-        std::vector<std::variant<
-            std::unique_ptr<Exp>, // 操作数
-            TokenType             // 运算符（<、>、<=、>=）
-            >>
-            elements_;
+        std::vector<std::variant<std::unique_ptr<Exp>, TokenType>> elements_;
 
         void accept(Visitor &v) override { v.visit(*this); }
     };
@@ -601,7 +580,6 @@ namespace AST
     {
     public:
         ConstInitVal() : Node(ND_ConstInitVal) {}
-        // 可能是单个常量表达式或嵌套数组初始化
         std::variant<std::unique_ptr<Exp>, std::vector<std::unique_ptr<ConstInitVal>>> value_;
 
         void accept(Visitor &v) override
@@ -610,12 +588,11 @@ namespace AST
         }
     };
 
-    // 变量初始化值（可包含运行时表达式）
+    // 变量初始化值
     class InitVal : public Node
     {
     public:
         InitVal() : Node(ND_InitVal) {}
-        // 可能是单个表达式或嵌套数组初始化
         std::variant<std::unique_ptr<Exp>, std::vector<std::unique_ptr<InitVal>>> value_;
 
         void accept(Visitor &v) override

@@ -118,9 +118,9 @@ void CodeGenerator::visit(ConstDef &node)
         };
         flatten(node.initVal_.get());
 
-        // 构造 ConstantArray 嵌套结构
-        // 一维： [N x i32]
-        // 二维： [M x [N x i32]]
+        // 构造ConstantArray嵌套结构
+        // 一维：[N x i32]
+        // 二维：[M x [N x i32]]
         Type *elemTy = builder_.getInt32Ty();
         Constant *initConst = nullptr;
 
@@ -329,7 +329,6 @@ void CodeGenerator::visit(FuncDef &node)
     llvm::Type *retTy = (node.returnType_->typeName_ == "void") ? builder_.getVoidTy() : builder_.getInt32Ty();
     // 参数类型列表
     std::vector<llvm::Type *> paramTys;
-    std::vector<llvm::Type *> rowTys;
     for (auto &param : node.params_)
     {
         llvm::Type *paramType = nullptr;
@@ -342,11 +341,6 @@ void CodeGenerator::visit(FuncDef &node)
             for (size_t i = 1; i < param->dimSizes_.size(); ++i)
             {
                 auto &dim = param->dimSizes_[i];
-                if (!dim)
-                {
-                    errs() << "Inner array dimensions must be specified\n";
-                    return;
-                }
                 innerDims.push_back(evalConstant.Eval(dim.get()));
             }
 
@@ -356,10 +350,10 @@ void CodeGenerator::visit(FuncDef &node)
             {
                 currentType = ArrayType::get(currentType, *it);
             }
-            currentType_ = currentType;
-            rowTys.push_back(currentType); // 内层数组类型
+            // 内层数组类型
             // 参数类型为指向最内层数组的指针
             paramType = PointerType::get(currentType, 0);
+            pointerTypeToArray_.insert(std::make_pair(paramType, currentType));
         }
         else
         {
@@ -395,7 +389,22 @@ void CodeGenerator::visit(FuncDef &node)
         builder_.CreateStore(&arg, alloc);
         // 记录到符号映射
         // 假设 paramType 是一个 Type* 类型
-        AddLocalVarToMap(alloc, paramTy, pname);
+        // AddLocalVarToMap(alloc, paramTy, pname);
+        // 插入 load 指令
+        if (paramTy->isPointerTy())
+        {
+            llvm::Value *loadedPtr = builder_.CreateLoad(paramTy, alloc, pname + ".load");
+            // // 更新符号表中该变量的指针值为加载后的指针
+            // auto var = GetVarByName(pname);
+            // var.first = loadedPtr;
+            AddLocalVarToMap(loadedPtr, paramTy, pname);
+        }
+        else
+        {
+            // 如果是标量参数，直接存入符号表
+            AddLocalVarToMap(alloc, paramTy, pname);
+        }
+
         idx++;
     }
 
@@ -418,7 +427,7 @@ void CodeGenerator::visit(FuncDef &node)
     llvm::verifyFunction(*func);
 
     PopScope();
-    //currentType_ = nullptr;
+    // currentType_ = nullptr;
 }
 
 void CodeGenerator::visit(MainFuncDef &node)
@@ -673,7 +682,7 @@ void CodeGenerator::visit(IOStmt &node)
 // 1.普通变量 2.一维数组 3.二维数组
 void CodeGenerator::visit(LVal &node)
 {
-    // 1. 查找变量符号（支持局部和全局变量）
+    // 查找变量符号（支持局部和全局变量）
     auto var = GetVarByName(node.name_);
     Value *basePtr = var.first;
     Type *baseTy = var.second;
@@ -684,31 +693,65 @@ void CodeGenerator::visit(LVal &node)
         return;
     }
     currentValue_ = basePtr;
-    // 1.第一种情况：普通变量直接返回地址
-    if (node.indices_.empty())
+
+    SmallVector<Value *, 4> indices;
+    for (auto &idxExp : node.indices_)
     {
-        currentValue_ = basePtr;
+        idxExp->accept(*this);
+        indices.push_back(loadIfPointer(currentValue_)); // 直接使用用户提供的索引值（如i和j）
+    }
+
+    // 处理一维数组索引
+    if (indices.size() == 1)
+    {
+        // 一维数组
+        basePtr = builder_.CreateInBoundsGEP(baseTy, basePtr, {builder_.getInt32(0), indices[0]}, node.name_ + ".idx");
+        currentValue_ = basePtr; // 最终得到元素地址
         return;
     }
 
-    SmallVector<Value *, 4> indices;
-    for (auto &idxExp : node.indices_) {
-        idxExp->accept(*this);
-        indices.push_back(loadIfPointer(currentValue_)); // 获取索引值（如 i 和 j）
+    // 处理数组索引（关键修正：删除硬编码的0，直接使用用户索引）
+    if (baseTy->isPointerTy())
+    {
+        auto iter = pointerTypeToArray_.find(baseTy); // 查找键为 key 的元素
+        if (iter != pointerTypeToArray_.end())
+        {
+            baseTy = iter->second; // 获取值
+        }
+        else
+        {
+            // 键不存在时的处理
+        }
     }
-
-    // 2. 处理数组索引（关键修正点：删除硬编码的 0，直接使用用户提供的索引）
-    if (currentType_->isArrayTy()) {
-        Type *currentTy = baseTy;
-        Value *ptr = basePtr;
-        for (size_t i = 0; i < indices.size(); ++i) {
+    if (baseTy->isArrayTy())
+    {
+        bool istowdim = false;
+        // 获取nei
+        Type *innerType = baseTy->getArrayElementType();
+        if (innerType->isArrayTy())
+        {
+            istowdim = true;
+        }
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
             // 对二维数组，第一次索引取行，第二次取列
-            ptr = builder_.CreateInBoundsGEP(currentTy, ptr, {indices[i]}, node.name_ + ".idx" + std::to_string(i));
-            if (auto arrTy = dyn_cast<ArrayType>(currentTy)) {
-                currentTy = arrTy->getElementType(); // 从二维到一维，再到 int
+            if (istowdim && i == 0)
+            {
+                basePtr = builder_.CreateInBoundsGEP(baseTy, basePtr, {builder_.getInt32(0), indices[i]}, node.name_ + ".idx" + std::to_string(i));
+            }
+            else
+            {
+                basePtr = builder_.CreateInBoundsGEP(baseTy, basePtr, {indices[i]}, node.name_ + ".idx" + std::to_string(i));
+            }
+
+            if (auto arrTy = dyn_cast<ArrayType>(baseTy))
+            {
+                baseTy = arrTy->getElementType(); // 从二维到一维，再到int
             }
         }
-        currentValue_ = ptr; // 最终得到元素地址
+        isAddr = true;
+        pointerTypeToArray_.insert(std::make_pair(basePtr->getType(), baseTy));
+        currentValue_ = basePtr; // 最终得到元素地址
     }
 }
 
@@ -731,7 +774,9 @@ void CodeGenerator::visit(PrimaryExp &node)
 void CodeGenerator::visit(UnaryExp &node)
 {
     node.operand_->accept(*this);
-    Value *v = loadIfPointer(currentValue_);
+    if (isAddr)
+        return;
+    currentValue_ = loadIfPointer(currentValue_); // TODO 需改进
     // 如果当前操作数是一个地址，需要从地址中加载值
     llvm::Value *operandVal = currentValue_;
     switch (node.op)
@@ -1042,21 +1087,26 @@ void CodeGenerator::visit(CallExp &node)
         Value *argVal = currentValue_;
         Type *paramTy = callee->getFunctionType()->getParamType(i);
 
-        // 处理数组参数类型适配
-        if (argVal->getType()->isPointerTy() &&
-            paramTy->isPointerTy() &&
-            argVal->getType()->isArrayTy())
+        // 处理二维数组参数：将二维数组转换为指向内层数组的指针
+        if (paramTy->isIntegerTy())
         {
-
-            // 生成GEP指令降级指针层级
-            Value *zero = builder_.getInt32(0);
-            Value *indices[] = {zero, zero};
-            argVal = builder_.CreateInBoundsGEP(argVal->getType()->getArrayElementType(), argVal, indices, "array.param.adjust");
+            // 如果参数类型是整数，直接使用
         }
+        else
+        {
+            Type *arrTy = pointerTypeToArray_[argVal->getType()];
+            // TODO
+            if (arrTy && arrTy->isArrayTy())
+            {
+                // 二维数组类型为 [M x [N x i32]]，需要获取第一行的地址（即降维为 [N x i32]*）
+                Value *zero = ConstantInt::get(builder_.getInt32Ty(), 0);
+                argVal = builder_.CreateInBoundsGEP(arrTy, argVal, {zero}, "array.param"); // 获取第一行指针
+            }
+        }
+
         args.push_back(argVal);
     }
     currentValue_ = builder_.CreateCall(callee, args);
-    //currentType_ = nullptr;
 }
 
 void CodeGenerator::visit(Number &node)
@@ -1198,7 +1248,7 @@ void CodeGenerator::ClearVarScope()
 
 llvm::Value *CodeGenerator::loadIfPointer(llvm::Value *v)
 {
-    if (v->getType()->isPointerTy())
+    if (v && v->getType()->isPointerTy())
     {
         auto ptrTy = llvm::dyn_cast<llvm::PointerType>(v->getType());
         if (ptrTy)
